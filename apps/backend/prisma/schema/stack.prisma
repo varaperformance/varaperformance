@@ -1,0 +1,66 @@
+// Supplement Stack Models
+// Track supplement intake with scheduling
+
+enum TimeSlot {
+  MORNING
+  AFTERNOON
+  EVENING
+}
+
+model Stack {
+  id       String  @id @default(uuid())
+  userId   String
+  user     User    @relation("UserStacks", fields: [userId], references: [id], onDelete: Cascade)
+  name     String
+  isActive Boolean @default(false) // Only one stack can be active per user
+  tips     Json? // Custom tips for this stack (AI-generated or user-defined)
+  // Format: [{ timeSlot: "MORNING" | "AFTERNOON" | "EVENING", title: string, content: string }]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items StackItem[]
+
+  // Note: "Only one active stack per user" is enforced in code (setActive method)
+  // Prisma doesn't support partial unique indices
+  @@index([userId])
+  @@index([userId, isActive])
+}
+
+model StackItem {
+  id       String    @id @default(uuid())
+  stackId  String
+  stack    Stack     @relation(fields: [stackId], references: [id], onDelete: Cascade)
+  name     String
+  dosage   String
+  timeSlot TimeSlot? // null = unscheduled
+  notes    String?
+
+  // GDPR Art. 32 — Encrypted health details (name, dosage, notes)
+  eStackItem          Bytes?
+  stackItemIv         Bytes?
+  stackItemAuthTag    Bytes?
+  stackItemWrappedKey Bytes?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logs StackLog[]
+
+  @@index([stackId])
+  @@index([stackId, timeSlot])
+}
+
+model StackLog {
+  id          String    @id @default(uuid())
+  stackItemId String
+  stackItem   StackItem @relation(fields: [stackItemId], references: [id], onDelete: Cascade)
+  date        DateTime  @db.Date // The date the supplement was taken
+  taken       Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@unique([stackItemId, date]) // One log per item per day
+  @@index([stackItemId])
+  @@index([date])
+}

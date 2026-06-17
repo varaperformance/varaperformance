@@ -1,0 +1,150 @@
+// Messaging Models - Coach <-> Client encrypted messaging
+// Uses AES-256-GCM envelope encryption via EncryptionService
+// Designed for NestJS Socket.IO real-time communication
+
+enum MessageStatus {
+  SENT // Message sent to server
+  DELIVERED // Message delivered to recipient's device
+  READ // Recipient has read the message
+}
+
+enum ConversationStatus {
+  ACTIVE
+  ARCHIVED
+  BLOCKED
+}
+
+// Conversation thread between two users.
+// Legacy coach/client fields are kept for backward compatibility.
+model Conversation {
+  id String @id @default(uuid())
+
+  // Canonical participants (supports coach-coach, user-coach, user-user)
+  participantOneId String
+  participantOne   User   @relation("ConversationParticipantOne", fields: [participantOneId], references: [id], onDelete: Cascade)
+  participantTwoId String
+  participantTwo   User   @relation("ConversationParticipantTwo", fields: [participantTwoId], references: [id], onDelete: Cascade)
+
+  // Legacy participants for compatibility with existing API consumers/data
+  coachId  String?
+  coach    Coach? @relation("CoachConversations", fields: [coachId], references: [id], onDelete: SetNull)
+  clientId String?
+  client   User?  @relation("ClientConversations", fields: [clientId], references: [id], onDelete: SetNull)
+
+  // Optional booking reference (conversation linked to coaching relationship)
+  bookingId String?  @unique
+  booking   Booking? @relation("BookingConversation", fields: [bookingId], references: [id], onDelete: SetNull)
+
+  status ConversationStatus @default(ACTIVE)
+
+  // Denormalized for quick list queries
+  lastMessageAt   DateTime? // Updated on new message
+  lastMessageText String?   @db.VarChar(100) // Preview snippet (plaintext kept for list queries)
+
+  // GDPR Art. 32 — Encrypted last message preview
+  eLastMessage          Bytes?
+  lastMessageIv         Bytes?
+  lastMessageAuthTag    Bytes?
+  lastMessageWrappedKey Bytes?
+
+  // Unread counts (denormalized for performance)
+  participantOneUnreadCount Int @default(0)
+  participantTwoUnreadCount Int @default(0)
+  // Legacy unread counts
+  coachUnreadCount          Int @default(0)
+  clientUnreadCount         Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  messages Message[] @relation("ConversationMessages")
+
+  @@unique([participantOneId, participantTwoId]) // One conversation per user pair
+  @@unique([coachId, clientId])
+  @@index([participantOneId, lastMessageAt])
+  @@index([participantTwoId, lastMessageAt])
+  @@index([coachId, lastMessageAt])
+  @@index([clientId, lastMessageAt])
+  @@index([status])
+}
+
+// Individual message within a conversation
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation("ConversationMessages", fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Sender reference (can be coach or client)
+  senderId String
+  sender   User   @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  // Encrypted message content: { text: string, attachments?: [...] }
+  // Uses same envelope encryption pattern as Notes
+  encryptedContent Bytes
+  contentIv        Bytes
+  contentAuthTag   Bytes
+  wrappedKey       Bytes
+
+  // Message delivery tracking
+  status      MessageStatus @default(SENT)
+  sentAt      DateTime      @default(now()) // When message was sent
+  deliveredAt DateTime? // When message was delivered to recipient
+  readAt      DateTime? // When recipient opened/viewed message
+
+  // Edit tracking
+  isEdited Boolean   @default(false)
+  editedAt DateTime?
+
+  // Soft delete (message can be deleted by sender)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
+  // Reply support
+  replyToId String?
+  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   Message[] @relation("MessageReplies")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  reactions MessageReaction[] @relation("MessageReactions")
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@index([status])
+}
+
+// Emoji reactions on messages
+model MessageReaction {
+  id        String  @id @default(uuid())
+  messageId String
+  message   Message @relation("MessageReactions", fields: [messageId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation("UserMessageReactions", fields: [userId], references: [id], onDelete: Cascade)
+
+  emoji String @db.VarChar(32) // Unicode emoji or shortcode (e.g., "👍", ":thumbsup:")
+
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId, emoji]) // One reaction type per user per message
+  @@index([messageId])
+}
+
+// Typing indicator state (ephemeral, but can be persisted for offline sync)
+// Note: For real-time, prefer Socket.IO events over DB polling
+model TypingIndicator {
+  id             String @id @default(uuid())
+  conversationId String
+  userId         String
+
+  isTyping  Boolean  @default(true)
+  startedAt DateTime @default(now())
+  expiresAt DateTime // Auto-clear after ~5 seconds
+
+  @@unique([conversationId, userId])
+  @@index([conversationId])
+  @@index([expiresAt]) // For cleanup job
+}

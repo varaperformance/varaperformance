@@ -1,0 +1,21 @@
+// Performance Metrics Schema
+// Stores Web Vitals and performance metrics from the frontend
+
+model PerformanceMetric {
+  id          String   @id @default(cuid())
+  userId      String
+  metricName  String   // LCP, CLS, TTFB, INP
+  value       Float    // Metric value in milliseconds or score
+  rating      String   // 'good', 'needs-improvement', 'poor'
+  url         String   // URL where metric was collected
+  userAgent   String?  // Browser user agent
+  deviceType  String?  // 'mobile', 'tablet', 'desktop'
+  connection  String?  // Connection type (e.g., '4g', 'wifi')
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([metricName])
+  @@index([createdAt])
+  @@map("performance_metrics")
+}

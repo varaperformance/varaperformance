@@ -1,0 +1,289 @@
+// Coaching Models - Coach profiles, packages, bookings, subscriptions, and reviews
+
+enum CoachSpecialty {
+  STRENGTH
+  BODYBUILDING
+  POWERLIFTING
+  CROSSFIT
+  NUTRITION
+  MOBILITY
+  ENDURANCE
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum BookingStatus {
+  PENDING // User submitted request, awaiting coach review
+  APPROVED // Coach approved, awaiting user payment
+  CONFIRMED // Paid, active coaching relationship
+  COMPLETED // Ended naturally
+  CANCELLED // Cancelled by user or coach
+  REFUNDED // Refund issued
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  CANCELLED
+  PAST_DUE
+}
+
+model Coach {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation("UserCoach", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Profile
+  title           String // "Elite Strength Coach"
+  bio             String           @db.Text
+  location        String // "Austin, TX"
+  experienceYears Int
+  certifications  String[] // ["CSCS", "USAPL Coach"]
+  certificationEvidence Json?
+  specialties     CoachSpecialty[]
+
+  // Status
+  isAvailable Boolean @default(true)
+  isFeatured  Boolean @default(false)
+  isVerified  Boolean @default(false)
+
+  // Stripe Connect account for marketplace payouts
+  stripeAccountId         String? @unique
+  stripeOnboardingComplete Boolean @default(false)
+  stripeChargesEnabled     Boolean @default(false)
+  stripePayoutsEnabled     Boolean @default(false)
+
+  // Aggregates (denormalized for performance)
+  rating      Decimal @default(0) @db.Decimal(3, 2) // 4.95
+  reviewCount Int     @default(0)
+  clientCount Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  packages      CoachPackage[]     @relation("CoachPackages")
+  bookings      Booking[]          @relation("CoachBookings")
+  reviews       CoachReview[]      @relation("CoachReviews")
+  contracts     CoachingContract[] @relation("CoachContracts")
+  conversations Conversation[]     @relation("CoachConversations")
+  workoutPlans  WorkoutPlan[]      @relation("CoachWorkoutPlans")
+  ledgerEntries CoachLedgerEntry[] @relation("CoachLedgerEntries")
+  payouts       CoachPayout[]      @relation("CoachPayouts")
+  availability  CoachAvailability[] @relation("CoachAvailabilitySlots")
+  tierSubscription CoachTierSubscription? @relation("CoachTierSub")
+
+  @@index([isAvailable])
+  @@index([isFeatured])
+  @@index([rating])
+}
+
+// Coach's contract template - versioned like LegalDocument
+model CoachingContract {
+  id      String @id @default(uuid())
+  coachId String
+  coach   Coach  @relation("CoachContracts", fields: [coachId], references: [id], onDelete: Cascade)
+
+  version     String // "1.0", "1.1", "2.0"
+  title       String // "Coaching Agreement"
+  content     String    @db.Text // Full contract text (markdown/HTML)
+  hashValue   String? // SHA256 hash for tamper verification
+  effectiveAt DateTime
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+
+  // Contract terms metadata
+  cancellationPolicy String? @db.Text
+  refundPolicy       String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  signatures ContractSignature[] @relation("ContractSignatures")
+
+  @@unique([coachId, version])
+  @@index([coachId, isActive])
+}
+
+// User's signature on a specific contract version
+model ContractSignature {
+  id         String           @id @default(uuid())
+  contractId String
+  contract   CoachingContract @relation("ContractSignatures", fields: [contractId], references: [id], onDelete: Cascade)
+  bookingId  String           @unique
+  booking    Booking          @relation("BookingContractSignature", fields: [bookingId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User             @relation("UserContractSignatures", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Signature details
+  signedAt  DateTime
+  ipAddress String? // Where signature was given
+  userAgent String?
+
+  // GDPR Art. 32 — Encrypted metadata (ipAddress, userAgent)
+  eSignatureMeta          Bytes?
+  signatureMetaIv         Bytes?
+  signatureMetaAuthTag    Bytes?
+  signatureMetaWrappedKey Bytes?
+
+  // Snapshot of contract at signing (for legal proof)
+  contractHashAtSigning String // Must match contract.hashValue at time of signing
+
+  // Cryptographic digital signature (ECDSA, future: PQC)
+  // Provides legal non-repudiation for health/fitness coaching liability
+  // Nullable for backwards compatibility with legacy signatures
+  signatureAlgorithm    String  @default("ecdsa-p256-v1") // "ecdsa-p256-v1", future: "ml-dsa-44-v1"
+  digitalSignature      String? @db.Text // Base64-encoded ECDSA signature
+  publicKeyFingerprint  String? // SHA-256 fingerprint of signing key (first 16 chars)
+  signingPayload        String? @db.Text // Canonical JSON payload that was signed (for verification)
+  userSignatureInput    String? // User's typed signature (e.g., "John Doe")
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([contractId])
+}
+
+model CoachPackage {
+  id      String @id @default(uuid())
+  coachId String
+  coach   Coach  @relation("CoachPackages", fields: [coachId], references: [id], onDelete: Cascade)
+
+  name         String // "Pro", "Elite", "Competition Prep"
+  description  String?
+  priceInCents Int // 15000 = $150.00
+  billingCycle BillingCycle
+  features     String[] // ["Weekly check-ins", "Form reviews"]
+
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  bookings      Booking[]      @relation("PackageBookings")
+  subscriptions Subscription[] @relation("PackageSubscriptions")
+
+  @@index([coachId, isActive])
+}
+
+model Booking {
+  id            String @id @default(uuid())
+  referenceCode String @unique // "VP-0001-ABC123"
+
+  userId    String
+  user      User         @relation("UserBookings", fields: [userId], references: [id], onDelete: Cascade)
+  coachId   String
+  coach     Coach        @relation("CoachBookings", fields: [coachId], references: [id])
+  packageId String
+  package   CoachPackage @relation("PackageBookings", fields: [packageId], references: [id])
+
+  status BookingStatus @default(PENDING)
+
+  // Intake form (encrypted PII - goals, experience, injuries, phone)
+  eIntake          Bytes?
+  intakeIv         Bytes?
+  intakeAuthTag    Bytes?
+  intakeWrappedKey Bytes?
+
+  // Payment
+  stripeCheckoutSessionId String?
+  stripePaymentIntentId   String?
+  paymentProvider PaymentProvider @default(STRIPE)
+  paidAt              DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  subscription      Subscription?      @relation("BookingSubscription")
+  contractSignature ContractSignature? @relation("BookingContractSignature")
+  conversation      Conversation?      @relation("BookingConversation")
+  workoutPlans      WorkoutPlanAssignment[] @relation("BookingWorkoutPlans")
+
+  @@index([userId])
+  @@index([coachId])
+  @@index([status])
+  @@index([coachId, status])
+  @@index([userId, status])
+}
+
+model Subscription {
+  id        String       @id @default(uuid())
+  bookingId String       @unique
+  booking   Booking      @relation("BookingSubscription", fields: [bookingId], references: [id], onDelete: Cascade)
+  packageId String
+  package   CoachPackage @relation("PackageSubscriptions", fields: [packageId], references: [id])
+
+  status SubscriptionStatus @default(PENDING)
+
+  stripeSubscriptionId    String?   @unique
+  stripeCustomerId        String?
+  paymentProvider PaymentProvider @default(STRIPE)
+  currentPeriodStart      DateTime
+  currentPeriodEnd        DateTime
+  cancelledAt             DateTime?
+  scheduledCancellationAt DateTime? // When subscription will be cancelled (at period end)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([currentPeriodEnd])
+}
+
+model CoachReview {
+  id      String @id @default(uuid())
+  coachId String
+  coach   Coach  @relation("CoachReviews", fields: [coachId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation("UserCoachReviews", fields: [userId], references: [id], onDelete: Cascade)
+
+  rating  Int // 1-5
+  title   String?
+  content String? @db.Text
+
+  isVerified Boolean @default(false) // Verified as actual client
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([coachId, userId]) // One review per coach per user
+  @@index([coachId])
+  @@index([rating])
+}
+
+// Coach's own platform subscription (separate from client booking subscriptions)
+model CoachTierSubscription {
+  id      String @id @default(uuid())
+  coachId String @unique
+  coach   Coach  @relation("CoachTierSub", fields: [coachId], references: [id], onDelete: Cascade)
+
+  pricingPlanId String
+  pricingPlan   PricingPlan @relation("PricingPlanCoachTierSubs", fields: [pricingPlanId], references: [id])
+
+  status SubscriptionStatus @default(PENDING)
+
+  stripeSubscriptionId    String?   @unique
+  stripeCustomerId        String?
+  stripeCheckoutSessionId String?
+  paymentProvider         PaymentProvider @default(STRIPE)
+
+  currentPeriodStart      DateTime?
+  currentPeriodEnd        DateTime?
+  cancelledAt             DateTime?
+  scheduledCancellationAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([stripeSubscriptionId])
+}

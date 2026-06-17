@@ -1,0 +1,186 @@
+// User & Profile Models
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+  APPLE
+}
+
+model User {
+  id               String    @id @default(uuid())
+  email            String    @unique // @encrypted - PII (HIPAA/SOC2)
+  password         String? // Argon2 hashed
+  isVerified       Boolean   @default(false)
+  verificationCode String?   @db.Char(6) // 6-digit numeric code
+  expiresAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Password Reset
+  passwordResetCode      String?   @db.Char(6) // 6-digit reset code
+  passwordResetExpiresAt DateTime?
+
+  // OAuth
+  authProvider AuthProvider @default(LOCAL)
+  providerId   String?
+
+  // SOC2: Security & Account Status
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime? // Account lockout timestamp
+  lastLoginAt         DateTime?
+  lastLoginIp         String? // @encrypted - PII
+  passwordChangedAt   DateTime?
+  mustChangePassword  Boolean   @default(false)
+
+  // TOTP Two-Factor Authentication
+  totpEnabled          Boolean   @default(false)
+  totpSecret           Bytes?    // AES-256-GCM encrypted TOTP secret
+  totpSecretIv         Bytes?
+  totpSecretAuthTag    Bytes?
+  totpSecretWrappedKey Bytes?
+  totpVerifiedAt       DateTime? // When 2FA was first verified/enabled
+  totpRecoveryCodes    Bytes?    // AES-256-GCM encrypted JSON array of hashed codes
+  totpRecoveryIv       Bytes?
+  totpRecoveryAuthTag  Bytes?
+  totpRecoveryWrappedKey Bytes?
+
+  // Compliance: Soft Delete & Retention (SOC2/HIPAA)
+  isActive     Boolean   @default(true) // Set to false on account deactivation/deletion
+  isRestricted Boolean   @default(false) // GDPR Art. 18 — pause processing while retaining data
+  deletedAt    DateTime? // Soft delete timestamp
+  deletedBy    String? // Who initiated deletion
+
+  // Registration access
+  createdRegistrationCodes RegistrationCode[] @relation("CreatedRegistrationCodes")
+  ownedRegistrationCodes   RegistrationCode[] @relation("OwnedRegistrationCodes")
+  usedRegistrationCodes    RegistrationCode[] @relation("UsedRegistrationCodes")
+
+  // Relations
+  profile     Profile?         @relation("UserProfile")
+  profileAddresses ProfileAddress[]
+  keyStore    KeyStore?        @relation("UserKeyStore")
+  roles       UserRole[]       @relation("UserRoles")
+  permissions UserPermission[] @relation("UserPermissions")
+  posts       Blog[]           @relation("UserPosts")
+  notes       Note[]           @relation("UserNotes")
+  stacks      Stack[]          @relation("UserStacks")
+
+  // Health tracking
+  weightLogs      WeightLog[]      @relation("UserWeightLogs")
+  weightGoal      WeightGoal?      @relation("UserWeightGoal")
+  workoutGoal     WorkoutGoal?     @relation("UserWorkoutGoal")
+  waterLogs       WaterLog[]       @relation("UserWaterLogs")
+  waterGoal       WaterGoal?       @relation("UserWaterGoal")
+  injectionProtocols InjectionProtocol[] @relation("UserInjectionProtocols")
+  injectionLogs      InjectionLog[]      @relation("UserInjectionLogs")
+  lifestyleGoal   LifestyleGoal?   @relation("UserLifestyleGoal")
+  workoutSessions WorkoutSession[] @relation("UserWorkoutSessions")
+  personalRecords PersonalRecord[] @relation("UserPersonalRecords")
+  stepLogs        StepLog[]        @relation("UserStepLogs")
+  sleepLogs       SleepLog[]       @relation("UserSleepLogs")
+  heartRateLogs   HeartRateLog[]   @relation("UserHeartRateLogs")
+  healthSyncLogs  HealthSyncLog[]  @relation("UserHealthSyncLogs")
+  healthSyncPreference HealthSyncPreference? @relation("UserHealthSyncPreference")
+
+  // Nutrition/Food tracking
+  foodLogs       FoodLog[]          @relation("UserFoodLogs")
+  createdFoods   Food[]             @relation("UserCreatedFoods")
+  favoriteFoods  UserFavoriteFood[] @relation("UserFavoriteFoods")
+  nutritionGoal  NutritionGoal?     @relation("UserNutritionGoal")
+  createdRecipes Recipe[]           @relation("UserCreatedRecipes")
+  savedRecipes   UserSavedRecipe[]  @relation("UserSavedRecipes")
+
+  // Coaching
+  coach              Coach?              @relation("UserCoach")
+  bookings           Booking[]           @relation("UserBookings")
+  coachReviews       CoachReview[]       @relation("UserCoachReviews")
+  contractSignatures ContractSignature[] @relation("UserContractSignatures")
+
+  // Messaging
+  conversations             Conversation[]    @relation("ClientConversations")
+  conversationsAsParticipantOne Conversation[] @relation("ConversationParticipantOne")
+  conversationsAsParticipantTwo Conversation[] @relation("ConversationParticipantTwo")
+  sentMessages              Message[]         @relation("SentMessages")
+  messageReactions          MessageReaction[] @relation("UserMessageReactions")
+
+  // Calendar
+  calendarEventsOwned         CalendarEvent[] @relation("UserCalendarEvents")
+  calendarEventsAsParticipant CalendarEvent[] @relation("UserCalendarMeetings")
+
+  // Payments
+  stripeCustomer StripeCustomer? @relation("UserStripeCustomer")
+
+  // Commerce
+  shopOrders            ShopOrder[]            @relation("UserShopOrders")
+  shopProductReviews    ShopProductReview[]    @relation("UserShopProductReviews")
+  createdDiscountCodes  DiscountCode[]         @relation("UserCreatedDiscountCodes")
+  referralCodes         ReferralCode[]         @relation("UserReferralCodes")
+  inventoryAdjustments  InventoryAdjustment[]  @relation("UserInventoryAdjustments")
+
+  // Notifications
+  notifications            Notification[]            @relation("UserNotifications")
+  notificationPreferences  NotificationPreference?   @relation("UserNotificationPreferences")
+
+  // Elevate social feed
+  elevatePosts     ElevatePost[]     @relation("UserElevatePosts")
+  elevateReactions ElevateReaction[] @relation("UserElevateReactions")
+  elevateComments  ElevateComment[]  @relation("UserElevateComments")
+  elevateSavedPosts ElevateSavedPost[] @relation("UserSavedPosts")
+  elevateReports   ElevateReport[]   @relation("UserElevateReports")
+  moderatorReviews ElevateReport[]   @relation("ModeratorReviews")
+  elevateStories   ElevateStory[]    @relation("UserElevateStories")
+  storyViews       ElevateStoryView[] @relation("UserStoryViews")
+  climbEntries     ClimbEntry[]      @relation("UserClimbEntries")
+  
+  // Gym Partners
+  gymPartnerRequests  GymPartner[] @relation("GymPartnerRequests")  // Requests I sent
+  gymPartnerReceived  GymPartner[] @relation("GymPartnerReceived")  // Requests I received
+  
+  // Workout Plans
+  workoutPlans               WorkoutPlan[]           @relation("UserWorkoutPlans")
+  workoutPlanAssignments     WorkoutPlanAssignment[] @relation("UserWorkoutPlanAssignments")  // Plans assigned to me
+  assignedWorkoutPlans       WorkoutPlanAssignment[] @relation("UserAssignedWorkoutPlans")   // Plans I assigned to others
+
+  // Team & Ambassadors
+  teamMember              TeamMember?              @relation("UserTeamMember")
+  ambassadorApplications  AmbassadorApplication[]  @relation("UserAmbassadorApplications")
+
+  // Habits & Achievements
+  habits           Habit[]           @relation("UserHabits")
+  achievements     UserAchievement[] @relation("UserAchievements")
+
+  // Meal Plans
+  mealPlans        MealPlan[]        @relation("UserMealPlans")
+
+  // Grocery Lists
+  groceryLists     GroceryList[]     @relation("UserGroceryLists")
+
+  // Body Measurements
+  bodyMeasurements BodyMeasurement[] @relation("UserBodyMeasurements")
+
+  // Challenges
+  challenges              Challenge[]              @relation("UserChallenges")
+  challengeParticipations ChallengeParticipant[]   @relation("UserChallengeParticipations")
+
+  // Dashboard
+  dashboardPreference DashboardPreference? @relation("UserDashboardPreference")
+
+  @@unique([authProvider, providerId])
+  @@index([isActive])
+  @@index([deletedAt])
+}
+
+model KeyStore {
+  id            String @id @default(uuid())
+  userId        String @unique
+  user          User   @relation("UserKeyStore", fields: [userId], references: [id], onDelete: Cascade)
+  // Optional sensitive notes encrypted
+  eKey          Bytes? // JSON String with publcic/private key metadata
+  keyIv         Bytes?
+  keyAuthTag    Bytes?
+  keyWrappedKey Bytes?
+
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  rotatedAt DateTime? // SOC2: Key rotation tracking
+}

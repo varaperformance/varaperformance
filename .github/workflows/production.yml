@@ -1,0 +1,247 @@
+name: Production Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write   # create GitHub releases
+  packages: write   # push to GHCR
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: varaperformance
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # CI — run for every service in the monorepo
+  # ---------------------------------------------------------------------------
+  ci:
+    name: CI - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [core, backend, web, worker]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build core
+        run: pnpm --filter @varaperformance/core build
+
+      - name: ${{ matrix.service }} - Format
+        if: matrix.service != 'core'
+        run: pnpm --filter @varaperformance/${{ matrix.service }} format
+
+      - name: ${{ matrix.service }} - Lint
+        if: matrix.service != 'core'
+        run: pnpm --filter @varaperformance/${{ matrix.service }} lint
+
+      - name: ${{ matrix.service }} - Generate Prisma
+        if: matrix.service == 'backend' || matrix.service == 'worker'
+        run: pnpm --filter @varaperformance/${{ matrix.service }} prisma:generate
+
+      - name: ${{ matrix.service }} - Test
+        run: pnpm --filter @varaperformance/${{ matrix.service }} test
+
+      # Build step removed — Docker build owns compilation via GHA layer cache.
+      # build:analyze for web bundle report can be re-added as a separate scheduled job.
+
+  # ---------------------------------------------------------------------------
+  # Build & Push Docker images to GHCR
+  # ---------------------------------------------------------------------------
+  build-and-push:
+    name: Build & Push - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: ci
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: backend
+            dockerfile: apps/backend/Dockerfile
+            image: varaperformance-backend
+          - service: web
+            dockerfile: apps/web/Dockerfile
+            image: varaperformance-web
+          - service: worker
+            dockerfile: apps/worker/Dockerfile
+            image: varaperformance-worker
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+
+      - name: Build and push ${{ matrix.service }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VITE_API_ORIGIN=${{ vars.VITE_API_ORIGIN || 'https://varaperformance.com' }}
+            VITE_API_VERSION=${{ vars.VITE_API_VERSION || 'v1' }}
+            VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL || 'https://varaperformance.com/v1/' }}
+            VITE_MESSAGING_SOCKET_URL=${{ vars.VITE_MESSAGING_SOCKET_URL || 'https://varaperformance.com/messaging' }}
+            VITE_NOTIFICATION_SOCKET_URL=${{ vars.VITE_NOTIFICATION_SOCKET_URL || 'https://varaperformance.com/notifications' }}
+            VITE_API_PROXY_TARGET=${{ vars.VITE_API_PROXY_TARGET || 'https://varaperformance.com' }}
+            VITE_GOOGLE_CLIENT_ID=${{ vars.VITE_GOOGLE_CLIENT_ID || '' }}
+            VITE_APPLE_CLIENT_ID=${{ vars.VITE_APPLE_CLIENT_ID || 'com.varaperformance.web' }}
+            VITE_APPLE_REDIRECT_URI=${{ vars.VITE_APPLE_REDIRECT_URI || 'https://varaperformance.com/auth/apple/callback' }}
+            VITE_APPLE_SCOPE=${{ vars.VITE_APPLE_SCOPE || 'name email' }}
+            VITE_MAPBOX_ACCESS_TOKEN=${{ vars.VITE_MAPBOX_ACCESS_TOKEN || '' }}
+
+  # ---------------------------------------------------------------------------
+  # Create GitHub Release with changelog
+  # ---------------------------------------------------------------------------
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download web bundle report
+        uses: actions/download-artifact@v4
+        with:
+          name: web-bundle-report
+          path: artifacts/
+        continue-on-error: true  # artifact only exists when web built OK
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          PREV_TAG=$(git describe --tags --abbrev=0 "${VERSION}^" 2>/dev/null || echo "")
+
+          if [ -n "$PREV_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..${VERSION}")
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" "${VERSION}")
+          fi
+
+          {
+            echo "## What's Changed"
+            echo ""
+            echo "$CHANGELOG"
+            echo ""
+            echo "## Container Images"
+            echo ""
+            echo "| Service | Image |"
+            echo "| --- | --- |"
+            echo "| Backend | \`ghcr.io/${{ env.OWNER }}/varaperformance-backend:${VERSION#v}\` |"
+            echo "| Web | \`ghcr.io/${{ env.OWNER }}/varaperformance-web:${VERSION#v}\` |"
+            echo "| Worker | \`ghcr.io/${{ env.OWNER }}/varaperformance-worker:${VERSION#v}\` |"
+          } > release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          files: artifacts/stats.html
+          generate_release_notes: false
+          make_latest: true
+
+  # ---------------------------------------------------------------------------
+  # Discord notification
+  # ---------------------------------------------------------------------------
+  notify:
+    name: Notify Discord
+    runs-on: ubuntu-latest
+    needs: [ci, build-and-push, release]
+    if: always()
+    env:
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      VERSION: ${{ github.ref_name }}
+      CI_STATUS: ${{ needs.ci.result }}
+      BUILD_STATUS: ${{ needs.build-and-push.result }}
+      RELEASE_STATUS: ${{ needs.release.result }}
+    steps:
+      - name: Send Discord notification
+        if: env.DISCORD_WEBHOOK != ''
+        run: |
+          overall="success"
+          for s in "$CI_STATUS" "$BUILD_STATUS" "$RELEASE_STATUS"; do
+            if [ "$s" = "failure" ] || [ "$s" = "cancelled" ]; then
+              overall="$s"; break
+            fi
+          done
+
+          color=5763719  # green
+          [ "$overall" = "failure" ] && color=15548997
+          [ "$overall" = "cancelled" ] && color=9807270
+
+          payload=$(jq -n \
+            --arg status "$overall" \
+            --argjson color "$color" \
+            --arg version "$VERSION" \
+            --arg commit "${{ github.sha }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg run_url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --arg ci "$CI_STATUS" \
+            --arg build "$BUILD_STATUS" \
+            --arg release "$RELEASE_STATUS" \
+            '{
+              username: "Vara Performance CI",
+              embeds: [{
+                title: ("Release " + $version + " — " + $status),
+                color: $color,
+                fields: [
+                  {name: "Version", value: $version, inline: true},
+                  {name: "Actor", value: $actor, inline: true},
+                  {name: "Commit", value: $commit[:8], inline: true},
+                  {name: "CI", value: $ci, inline: true},
+                  {name: "Build", value: $build, inline: true},
+                  {name: "Release", value: $release, inline: true},
+                  {name: "Run", value: $run_url, inline: false}
+                ]
+              }]
+            }')
+
+          curl -fsSX POST \
+            -H 'Content-Type: application/json' \
+            -d "$payload" \
+            "$DISCORD_WEBHOOK"

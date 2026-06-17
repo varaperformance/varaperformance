@@ -1,0 +1,36 @@
+// Blog Models
+enum Published {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Blog {
+  id         String    @id @default(uuid())
+  slug       String    @unique
+  title      String
+  excerpt    String    @db.VarChar(500)
+  content    String    @db.Text
+  coverImage String
+  readTime   String    @default("5 min read")
+  featured   Boolean   @default(false)
+  status     Published @default(DRAFT)
+  views      Int       @default(0)
+  likes      Int       @default(0)
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  authorId   String
+  author     User     @relation("UserPosts", fields: [authorId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  tags       Tag[]
+
+  @@index([slug])
+  @@index([status, publishedAt])
+  @@index([authorId])
+  @@index([categoryId])
+}

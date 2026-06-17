@@ -1,0 +1,41 @@
+// Water Tracking Models
+
+enum VolumeUnit {
+  OZ // US fluid ounces
+  ML // Milliliters  
+  L // Liters
+  CUPS // US cups
+}
+
+model WaterLog {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserWaterLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Water amount - stored in plain (not PHI)
+  amount Float // Amount consumed
+  unit   VolumeUnit @default(OZ)
+
+  // Date/time of consumption
+  loggedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, loggedAt])
+  @@index([loggedAt])
+}
+
+// Daily water goal tracking
+model WaterGoal {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation("UserWaterGoal", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Target daily intake
+  targetAmount Float      @default(64) // Default 64oz / ~2L
+  targetUnit   VolumeUnit @default(OZ)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

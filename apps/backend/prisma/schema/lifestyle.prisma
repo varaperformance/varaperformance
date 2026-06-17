@@ -1,0 +1,24 @@
+// Lifestyle Goal Models
+
+model LifestyleGoal {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation("UserLifestyleGoal", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Sleep target in hours per night
+  sleepHours Float @default(8)
+
+  // Daily movement target
+  dailySteps Int @default(10000)
+
+  // Target percent adherence to nutrition/workout routines
+  adherenceTarget Int @default(85)
+
+  // Weekly accountability check-ins
+  checkInsPerWeek Int @default(4)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("lifestyle_goals")
+}

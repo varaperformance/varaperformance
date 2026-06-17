@@ -1,0 +1,79 @@
+// Weight Tracking Models
+// Weight is PHI under HIPAA - must be encrypted
+// Uses AES-256-GCM envelope encryption via EncryptionService
+
+enum WeightUnit {
+  OZ
+  LB
+  G
+  KG
+}
+
+model WeightLog {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserWeightLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Encrypted weight value (PHI under HIPAA)
+  // Decrypted format: { value: number, unit: WeightUnit }
+  encryptedData Bytes
+  dataIv        Bytes
+  dataAuthTag   Bytes
+  wrappedKey    Bytes
+
+  // Optional body fat percentage (encrypted - PHI)
+  // Value: 0-100 percentage
+  encryptedBodyFat  Bytes?
+  bodyFatIv         Bytes?
+  bodyFatAuthTag    Bytes?
+  bodyFatWrappedKey Bytes?
+
+  // Optional muscle mass in lbs/kg (encrypted - PHI)
+  // Same unit as weight
+  encryptedMuscleMass  Bytes?
+  muscleMassIv         Bytes?
+  muscleMassAuthTag    Bytes?
+  muscleMassWrappedKey Bytes?
+
+  // Date of measurement (not encrypted - needed for queries)
+  loggedAt DateTime @default(now())
+
+  // Optional note (also encrypted if provided)
+  // e.g., "morning weight", "post-workout"
+  encryptedNote  Bytes?
+  noteIv         Bytes?
+  noteAuthTag    Bytes?
+  noteWrappedKey Bytes?
+
+  source WorkoutSessionSource @default(MANUAL)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, loggedAt])
+  @@index([userId, source])
+  @@index([loggedAt])
+}
+
+// Weight goal tracking
+model WeightGoal {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation("UserWeightGoal", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Target weight (encrypted - PHI)
+  encryptedTargetWeight  Bytes
+  targetWeightIv         Bytes
+  targetWeightAuthTag    Bytes
+  targetWeightWrappedKey Bytes
+
+  // Goal type: LOSE, GAIN, MAINTAIN
+  goalType String @default("MAINTAIN")
+
+  // Weekly rate in lbs (0.5, 1, 1.5, 2)
+  weeklyRate Float @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

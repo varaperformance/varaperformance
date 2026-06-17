@@ -1,0 +1,103 @@
+{
+  "name": "@varaperformance/worker",
+  "version": "1.0.0",
+  "description": "Vara Performance worker microservice",
+  "author": "worlddrknss",
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/varaperformance/varaperformance.git",
+    "directory": "apps/worker"
+  },
+  "scripts": {
+    "prisma:generate": "prisma generate && mkdir -p src/generated && (test -L src/generated/prisma || ln -s ../../../backend/src/generated/prisma src/generated/prisma)",
+    "build": "pnpm run prisma:generate && nest build",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/src/main",
+    "lint": "eslint \"src/**/*.ts\" --fix",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "@nestjs-modules/mailer": "^2.0.2",
+    "@nestjs/axios": "^4.0.1",
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.0.1",
+    "@nestjs/microservices": "^11.0.1",
+    "@nestjs/schedule": "^6.1.1",
+    "@prisma/adapter-pg": "^7.4.0",
+    "@prisma/client": "^7.4.0",
+    "@varaperformance/core": "workspace:*",
+    "amqp-connection-manager": "^5.0.0",
+    "amqplib": "^0.10.9",
+    "argon2": "^0.44.0",
+    "axios": "^1.15.0",
+    "handlebars": "^4.7.9",
+    "ioredis": "^5.9.3",
+    "nestjs-pino": "^4.5.0",
+    "nodemailer": "^8.0.1",
+    "pg": "^8.18.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.1",
+    "@types/amqplib": "^0.10.8",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.19.9",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.2",
+    "globals": "^17.3.0",
+    "jest": "^30.0.0",
+    "prettier": "^3.4.2",
+    "prisma": "^7.3.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.56.0"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": ".",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "src/**/*.(t|j)s"
+    ],
+    "coverageDirectory": "./coverage",
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/src/"
+    ],
+    "moduleNameMapper": {
+      "^@app/common/mailer$": "<rootDir>/src/test/mailer.service.mock.ts",
+      "^@app/common/secrets$": "<rootDir>/libs/common/src/secrets/index.ts",
+      "^@app/database$": "<rootDir>/src/test/database.service.mock.ts",
+      "^@app/security$": "<rootDir>/src/test/encryption.service.mock.ts",
+      "^@generated/prisma$": "<rootDir>/src/generated/prisma/client.ts",
+      "^@generated/prisma/(.*)$": "<rootDir>/src/generated/prisma/$1",
+      "^\\./internal/(.*)\\.js$": "<rootDir>/src/generated/prisma/internal/$1.ts",
+      "^\\./enums\\.js$": "<rootDir>/src/generated/prisma/enums.ts"
+    },
+    "watchman": false
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

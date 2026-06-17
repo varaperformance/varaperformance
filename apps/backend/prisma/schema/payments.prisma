@@ -1,0 +1,242 @@
+// Payment Models - Stripe marketplace transactions, pricing, and settings
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentType {
+  ONE_TIME // Single payment (booking, shop order)
+  SUBSCRIPTION // Recurring payment
+  REFUND // Refund transaction
+}
+
+enum PaymentProvider {
+  STRIPE
+}
+
+enum RefundReason {
+  REQUESTED_BY_CUSTOMER
+  DUPLICATE
+  FRAUDULENT
+  SERVICE_NOT_RENDERED
+  OTHER
+}
+
+// Stripe Customer - links user to Stripe customer ID
+model StripeCustomer {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation("UserStripeCustomer", fields: [userId], references: [id], onDelete: Cascade)
+
+  stripeCustomerId String @unique // cus_xxx
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  payments Payment[] @relation("StripeCustomerPayments")
+
+  @@index([stripeCustomerId])
+}
+
+// Payment Transaction Record
+model Payment {
+  id         String         @id @default(uuid())
+  customerId String
+  customer   StripeCustomer @relation("StripeCustomerPayments", fields: [customerId], references: [id], onDelete: Cascade)
+
+  // Stripe IDs
+  stripeCheckoutSessionId String? @unique // cs_xxx
+  stripePaymentIntentId   String? @unique // pi_xxx
+  stripeSubscriptionId    String? // sub_xxx
+  stripeInvoiceId         String? // in_xxx
+
+  provider PaymentProvider @default(STRIPE)
+
+  // Amount
+  amountInCents Int // Total amount charged
+  currency      String @default("USD")
+  feeInCents    Int?   @default(0) // Processor fees
+
+  // Status
+  status PaymentStatus @default(PENDING)
+  type   PaymentType   @default(ONE_TIME)
+
+  // Metadata - what this payment is for
+  bookingId String? // Coach booking reference
+  orderId   String? // Future: Shop order reference
+
+  // Error tracking
+  failureCode    String?
+  failureMessage String?
+
+  // Timestamps
+  paidAt     DateTime?
+  refundedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relations
+  refunds Refund[] @relation("PaymentRefunds")
+  ledgerEntries CoachLedgerEntry[] @relation("PaymentLedgerEntries")
+
+  @@index([customerId])
+  @@index([status])
+  @@index([bookingId])
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([customerId, status])
+}
+
+// Refund/Adjustment Records
+model Refund {
+  id        String  @id @default(uuid())
+  paymentId String
+  payment   Payment @relation("PaymentRefunds", fields: [paymentId], references: [id], onDelete: Cascade)
+
+  stripeRefundId String @unique // re_xxx
+
+  amountInCents Int
+  reason        RefundReason @default(REQUESTED_BY_CUSTOMER)
+  notes         String?
+
+  status    PaymentStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([paymentId])
+}
+
+enum CoachLedgerEntryType {
+  SALE
+  REFUND
+  CHARGEBACK
+  ADJUSTMENT
+  PAYOUT
+}
+
+enum CoachPayoutStatus {
+  PENDING
+  IN_TRANSIT
+  PAID
+  FAILED
+}
+
+// Immutable accounting ledger used for coach earnings and payout audits
+model CoachLedgerEntry {
+  id String @id @default(uuid())
+
+  coachId String
+  coach   Coach  @relation("CoachLedgerEntries", fields: [coachId], references: [id], onDelete: Cascade)
+
+  paymentId String?
+  payment   Payment? @relation("PaymentLedgerEntries", fields: [paymentId], references: [id], onDelete: SetNull)
+
+  payoutId String?
+  payout   CoachPayout? @relation("PayoutEntries", fields: [payoutId], references: [id], onDelete: SetNull)
+
+  provider PaymentProvider @default(STRIPE)
+  type     CoachLedgerEntryType
+
+  grossAmountInCents     Int
+  platformFeeInCents     Int @default(0)
+  processorFeeInCents    Int @default(0)
+  netAmountInCents       Int
+  runningBalanceInCents  Int?
+
+  referenceId String?
+  notes       String?
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([coachId, createdAt])
+  @@index([type])
+  @@index([paymentId])
+  @@index([payoutId])
+}
+
+model CoachPayout {
+  id String @id @default(uuid())
+
+  coachId String
+  coach   Coach  @relation("CoachPayouts", fields: [coachId], references: [id], onDelete: Cascade)
+
+  provider PaymentProvider @default(STRIPE)
+  status   CoachPayoutStatus @default(PENDING)
+
+  amountInCents Int
+  currency      String @default("USD")
+
+  externalPayoutId String? // payout id from provider or bank system
+  failureReason    String?
+  paidAt           DateTime?
+
+  periodStart DateTime?
+  periodEnd   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entries CoachLedgerEntry[] @relation("PayoutEntries")
+
+  @@index([coachId, status])
+  @@index([createdAt])
+}
+
+enum PricingPlanAudience {
+  FREE
+  COACH
+  GYM
+}
+
+model PricingPlan {
+  id          String            @id @default(uuid())
+  slug        String            @unique
+  name        String
+  description String?
+  audience    PricingPlanAudience
+  priceInCents Int
+  periodLabel String?
+  cta         String
+  ctaLink     String
+  highlighted Boolean           @default(false)
+  isActive    Boolean           @default(true)
+  sortOrder   Int               @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  features PricingPlanFeature[]
+  coachTierSubscriptions CoachTierSubscription[] @relation("PricingPlanCoachTierSubs")
+
+  @@index([audience, isActive])
+  @@index([sortOrder])
+}
+
+model PricingPlanFeature {
+  id      String      @id @default(uuid())
+  planId  String
+  plan    PricingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  text    String
+  sortOrder Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([planId, sortOrder])
+}
+
+model PlatformSetting {
+  key       String  @id
+  value     String
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -1,0 +1,21 @@
+model DashboardPreference {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation("UserDashboardPreference", fields: [userId], references: [id], onDelete: Cascade)
+  visibleCards String[]
+  cardOrder    String[]
+  cardSizes    Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model WorkoutQuote {
+  id        String   @id @default(uuid())
+  quote     String
+  author    String
+  hash      String   @unique
+  source    String   @default("ai")
+  createdAt DateTime @default(now())
+
+  @@index([author])
+}

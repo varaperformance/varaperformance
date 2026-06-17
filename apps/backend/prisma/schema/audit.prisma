@@ -1,0 +1,164 @@
+// Audit & Compliance Models (SOC2/HIPAA/COPPA/PCI)
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  FAILED_LOGIN
+  PASSWORD_CHANGE
+  TOTP_ENABLED
+  TOTP_DISABLED
+  EXPORT
+  CONSENT_GRANTED
+  CONSENT_REVOKED
+  DATA_IMPORT
+}
+
+// SOC2/HIPAA: Comprehensive audit trail for all data access
+model AuditLog {
+  id         String      @id @default(uuid())
+  userId     String? // Null for anonymous/system actions
+  action     AuditAction
+  resource   String // e.g., "User", "Profile", "KeyStore"
+  resourceId String? // ID of affected resource
+  ipAddress  String? // @encrypted - PII under HIPAA
+  userAgent  String?
+
+  // GDPR Art. 32 — Encrypted metadata (ipAddress, userAgent)
+  eAuditMeta          Bytes?
+  auditMetaIv         Bytes?
+  auditMetaAuthTag    Bytes?
+  auditMetaWrappedKey Bytes?
+
+  metadata   Json? // Additional context (encrypted if contains PII)
+  oldValue   Json? // Previous state (encrypted)
+  newValue   Json? // New state (encrypted)
+
+  // Idempotency key to prevent duplicate entries from RabbitMQ redelivery
+  idempotencyKey String? @unique
+
+  createdAt  DateTime    @default(now())
+
+  @@index([userId])
+  @@index([resource, resourceId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// SOC2: Session tracking for security monitoring
+model Session {
+  id             String   @id @default(uuid())
+  userId         String
+  encryptedToken Bytes // Encrypted session token
+  tokenIv        Bytes // AES-GCM IV for token
+  tokenAuthTag   Bytes // AES-GCM auth tag for token
+  wrappedKey     Bytes // Wrapped data encryption key
+  ipAddress      String? // @encrypted - PII
+  userAgent      String?
+
+  // GDPR Art. 32 — Encrypted session metadata (ipAddress, userAgent)
+  eSessionMeta          Bytes?
+  sessionMetaIv         Bytes?
+  sessionMetaAuthTag    Bytes?
+  sessionMetaWrappedKey Bytes?
+
+  lastActivity   DateTime @default(now())
+  expiresAt      DateTime
+  isRevoked      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// SOC2: Failed login tracking for brute force protection
+model LoginAttempt {
+  id        String   @id @default(uuid())
+  email     String // @encrypted - PII
+  ipAddress String? // @encrypted
+  success   Boolean
+  reason    String? // Failure reason
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([ipAddress])
+  @@index([createdAt])
+}
+
+// SOC2: Password history for policy enforcement
+model PasswordHistory {
+  id           String   @id @default(uuid())
+  userId       String
+  passwordHash String // Previous password hashes
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+// GDPR Art. 33/34 — Data breach notification tracking
+enum BreachSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum BreachStatus {
+  DETECTED
+  INVESTIGATING
+  CONTAINED
+  NOTIFIED_DPA
+  NOTIFIED_USERS
+  RESOLVED
+}
+
+model BreachNotification {
+  id             String         @id @default(uuid())
+  reportedBy     String // Admin userId who recorded the breach
+  severity       BreachSeverity
+  status         BreachStatus   @default(DETECTED)
+  description    String // Internal description of what happened
+  dataCategories String[] // e.g. ["email", "health_data", "payment_info"]
+  affectedCount  Int? // Estimated number of affected users/records
+  detectedAt     DateTime // When the breach was first detected
+  containedAt    DateTime? // When the breach was contained
+  dpaNotifiedAt  DateTime? // When supervisory authority was notified (72 h limit)
+  usersNotifiedAt DateTime? // When affected users were notified
+  dpaReference   String? // DPA case/reference number
+  internalNotes  String?
+
+  // GDPR Art. 32 — Encrypted internal notes (may contain PII)
+  eNotes          Bytes?
+  notesIv         Bytes?
+  notesAuthTag    Bytes?
+  notesWrappedKey Bytes?
+
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([status])
+  @@index([severity])
+  @@index([detectedAt])
+}
+
+// Data retention tracking for compliance
+model DataRetention {
+  id             String    @id @default(uuid())
+  resource       String // Table/model name
+  resourceId     String // Record ID
+  retainUntil    DateTime // When data can be purged
+  legalHold      Boolean   @default(false) // Prevent deletion if true
+  deletedAt      DateTime? // Soft delete timestamp
+  deletedBy      String? // User who initiated deletion
+  retentionNotes String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([resource, resourceId])
+  @@index([retainUntil])
+  @@index([legalHold])
+}

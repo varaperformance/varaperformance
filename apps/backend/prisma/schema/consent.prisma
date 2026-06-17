@@ -1,0 +1,70 @@
+// Consent Management Models (HIPAA/SOC2)
+
+enum ConsentType {
+  TERMS_OF_SERVICE
+  PRIVACY_POLICY
+  MARKETING
+  DATA_PROCESSING
+  AI_FEATURES_CONSENT
+  HIPAA_AUTHORIZATION // HIPAA
+  DATA_SHARING
+  COOKIES
+  HEALTH_DATA_CONSENT
+  // Informational legal documents (not consent-tracked)
+  SECURITY_POLICY
+  ACCESSIBILITY_STATEMENT
+}
+
+enum ConsentStatus {
+  PENDING
+  GRANTED
+  REVOKED
+  EXPIRED
+}
+
+// HIPAA/SOC2: Track all user consents
+model Consent {
+  id        String        @id @default(uuid())
+  userId    String
+  type      ConsentType
+  status    ConsentStatus @default(PENDING)
+  version   String // Version of terms/policy consented to
+  ipAddress String? // @encrypted - Where consent was given
+  userAgent String?
+
+  // GDPR Art. 32 — Encrypted metadata (ipAddress, userAgent)
+  eConsentMeta          Bytes?
+  consentMetaIv         Bytes?
+  consentMetaAuthTag    Bytes?
+  consentMetaWrappedKey Bytes?
+
+  grantedAt DateTime?
+  revokedAt DateTime?
+  expiresAt DateTime? // Some consents may expire
+  metadata  Json? // Additional consent details
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([userId, type, version])
+  @@index([userId])
+  @@index([type, status])
+  @@index([expiresAt])
+}
+
+// Legal document version tracking
+model LegalDocument {
+  id          String      @id @default(uuid())
+  type        ConsentType
+  version     String
+  title       String
+  content     String      @db.Text
+  hashValue   String? // SHA256 hash of content for tamper verification
+  effectiveAt DateTime
+  expiresAt   DateTime?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([type, version])
+  @@index([type, isActive])
+}

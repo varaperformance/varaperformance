@@ -1,0 +1,210 @@
+// Workout Plans - Templates for weekly workout schedules
+// Used by coaches to assign to clients and users to create/share their own plans
+
+enum WorkoutPlanVisibility {
+  PRIVATE    // Only creator can see
+  CLIENTS    // Only coach's clients can see (for coaches)
+  PUBLIC     // Anyone can copy/follow
+}
+
+enum WorkoutPlanAssignmentStatus {
+  ACTIVE     // Currently following this plan
+  PAUSED     // Temporarily paused
+  COMPLETED  // Finished the program
+  CANCELLED  // Cancelled by coach or client
+}
+
+enum DayOfWeek {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
+// The main workout plan template
+model WorkoutPlan {
+  id          String               @id @default(uuid())
+  creatorId   String
+  creator     User                 @relation("UserWorkoutPlans", fields: [creatorId], references: [id], onDelete: Cascade)
+  
+  name        String               // "Push Pull Legs", "5x5 Strength"
+  description String?              @db.Text
+  visibility  WorkoutPlanVisibility @default(PRIVATE)
+  
+  // Optional: If created by a coach
+  coachId     String?
+  coach       Coach?               @relation("CoachWorkoutPlans", fields: [coachId], references: [id], onDelete: SetNull)
+  
+  // Metadata
+  durationWeeks Int?               // Suggested program duration (null = ongoing)
+  difficulty    ExerciseDifficulty?
+  
+  // Stats (denormalized)
+  copyCount   Int                  @default(0)  // How many times copied
+  assignCount Int                  @default(0)  // How many active assignments
+  
+  isActive    Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  
+  // Relations
+  days        WorkoutPlanDay[]     @relation("WorkoutPlanDays")
+  assignments WorkoutPlanAssignment[] @relation("WorkoutPlanAssignments")
+  copies      WorkoutPlan[]        @relation("WorkoutPlanCopies")
+  copiedFrom  WorkoutPlan?         @relation("WorkoutPlanCopies", fields: [copiedFromId], references: [id], onDelete: SetNull)
+  copiedFromId String?
+  
+  @@index([creatorId])
+  @@index([coachId])
+  @@index([visibility])
+  @@index([isActive, visibility])
+  @@map("workout_plans")
+}
+
+// Each day in the workout plan (Sunday - Saturday)
+model WorkoutPlanDay {
+  id          String       @id @default(uuid())
+  planId      String
+  plan        WorkoutPlan  @relation("WorkoutPlanDays", fields: [planId], references: [id], onDelete: Cascade)
+  
+  dayOfWeek   DayOfWeek    // SUNDAY, MONDAY, etc.
+  name        String?      // "Push Day", "Leg Day", "Rest & Recovery"
+  isRestDay   Boolean      @default(false)
+  
+  // Optional notes for the day
+  notes       String?      @db.Text
+  
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  // Relations
+  exercises   WorkoutPlanExercise[] @relation("WorkoutPlanDayExercises")
+  
+  @@unique([planId, dayOfWeek])
+  @@index([planId])
+  @@map("workout_plan_days")
+}
+
+// Exercises within a day
+model WorkoutPlanExercise {
+  id          String         @id @default(uuid())
+  dayId       String
+  day         WorkoutPlanDay @relation("WorkoutPlanDayExercises", fields: [dayId], references: [id], onDelete: Cascade)
+  
+  exerciseId  String
+  exercise    Exercise       @relation("ExerciseWorkoutPlans", fields: [exerciseId], references: [id])
+  
+  // Target ranges (coach can specify goals)
+  targetSets     Int?        // e.g., 4
+  targetRepsMin  Int?        // e.g., 8
+  targetRepsMax  Int?        // e.g., 12
+  targetWeight   Float?      // Suggested weight (optional)
+  targetRpe      Int?        // Rate of Perceived Exertion (1-10)
+  targetDuration Int?        // For timed exercises (seconds)
+  targetDistance Float?      // For cardio (meters)
+  
+  // Exercise notes (e.g., "superset with next", "3 sec negative")
+  notes       String?
+  
+  sortOrder   Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  // Relations
+  sets        WorkoutPlanExerciseSet[] @relation("WorkoutPlanExerciseSets")
+  
+  @@index([dayId])
+  @@index([exerciseId])
+  @@map("workout_plan_exercises")
+}
+
+// Individual sets for each exercise (allows different targets per set)
+model WorkoutPlanExerciseSet {
+  id              String              @id @default(uuid())
+  planExerciseId  String
+  planExercise    WorkoutPlanExercise @relation("WorkoutPlanExerciseSets", fields: [planExerciseId], references: [id], onDelete: Cascade)
+  
+  setNumber       Int                 // 1, 2, 3... (order of the set)
+  
+  // Target values for this specific set
+  targetReps      Int?                // e.g., 10
+  targetWeight    Float?              // Weight for this set (lbs/kg)
+  targetRpe       Int?                // RPE for this set (1-10)
+  targetDuration  Int?                // For timed sets (seconds)
+  restAfter       Int?                // Rest time after this set (seconds)
+  
+  // Set type (normal, warmup, drop set, etc.)
+  setType         String?             // "warmup", "working", "drop", "failure"
+  
+  notes           String?             // e.g., "pause at bottom", "slow negative"
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  @@unique([planExerciseId, setNumber])
+  @@index([planExerciseId])
+  @@map("workout_plan_exercise_sets")
+}
+
+// Assignment of a plan to a client (coach -> client) or self-assignment
+model WorkoutPlanAssignment {
+  id          String                     @id @default(uuid())
+  planId      String
+  plan        WorkoutPlan                @relation("WorkoutPlanAssignments", fields: [planId], references: [id], onDelete: Cascade)
+  
+  // Who is following the plan
+  clientId    String
+  client      User                       @relation("UserWorkoutPlanAssignments", fields: [clientId], references: [id], onDelete: Cascade)
+  
+  // Who assigned it (null = self-assigned)
+  assignedById String?
+  assignedBy   User?                     @relation("UserAssignedWorkoutPlans", fields: [assignedById], references: [id], onDelete: SetNull)
+  
+  // If assigned by a coach through a booking
+  bookingId   String?
+  booking     Booking?                   @relation("BookingWorkoutPlans", fields: [bookingId], references: [id], onDelete: SetNull)
+  
+  status      WorkoutPlanAssignmentStatus @default(ACTIVE)
+  startDate   DateTime                   @default(now())
+  endDate     DateTime?                  // When completed/cancelled
+  
+  // Optional coach notes for the client
+  coachNotes  String?                    @db.Text
+  
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+  
+  // Track completed workout days
+  completedDays WorkoutPlanCompletedDay[] @relation("AssignmentCompletedDays")
+  
+  @@unique([planId, clientId, status]) // Only one active assignment per plan per client
+  @@index([clientId])
+  @@index([planId])
+  @@index([assignedById])
+  @@index([status])
+  @@map("workout_plan_assignments")
+}
+
+// Track completed workout days (links to actual workout sessions)
+model WorkoutPlanCompletedDay {
+  id            String                @id @default(uuid())
+  assignmentId  String
+  assignment    WorkoutPlanAssignment @relation("AssignmentCompletedDays", fields: [assignmentId], references: [id], onDelete: Cascade)
+  
+  dayOfWeek     DayOfWeek
+  weekNumber    Int                   // Which week of the program (1, 2, 3...)
+  
+  // Link to the actual workout session
+  sessionId     String?               @unique
+  session       WorkoutSession?       @relation("WorkoutSessionPlanDay", fields: [sessionId], references: [id], onDelete: SetNull)
+  
+  completedAt   DateTime              @default(now())
+  
+  @@unique([assignmentId, dayOfWeek, weekNumber])
+  @@index([assignmentId])
+  @@map("workout_plan_completed_days")
+}

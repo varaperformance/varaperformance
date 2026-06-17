@@ -1,0 +1,25 @@
+// Marketing — Newsletter campaigns
+
+enum NewsletterStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+model Newsletter {
+  id          String           @id @default(uuid())
+  subject     String
+  content     String           @db.Text
+  status      NewsletterStatus @default(DRAFT)
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  sentCount   Int              @default(0)
+  failedCount Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([status])
+  @@index([scheduledAt])
+}

@@ -1,0 +1,106 @@
+// Exercise Library Models
+// Public exercise reference data for the app
+
+enum ExerciseCategory {
+  STRENGTH
+  CARDIO
+  FLEXIBILITY
+  PLYOMETRICS
+  BODYWEIGHT
+}
+
+enum MuscleGroup {
+  CHEST
+  BACK
+  SHOULDERS
+  BICEPS
+  TRICEPS
+  LEGS
+  GLUTES
+  CORE
+  FULL_BODY
+}
+
+enum Equipment {
+  BARBELL
+  DUMBBELL
+  CABLE
+  MACHINE
+  BODYWEIGHT
+  KETTLEBELL
+  RESISTANCE_BAND
+  CARDIO_MACHINE
+}
+
+enum ExerciseDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+model Exercise {
+  id          String             @id @default(uuid())
+  slug        String             @unique
+  name        String
+  category    ExerciseCategory
+  difficulty  ExerciseDifficulty
+  description String             @db.Text
+
+  // Text arrays (no need to query across exercises)
+  instructions String[]
+  tips         String[]
+  variations   String[]
+
+  // Media
+  videoUrl     String?
+  thumbnailUrl String?
+
+  // Metadata
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Join table relations for efficient filtering
+  muscleGroups    ExerciseMuscleGroup[]
+  equipmentNeeded ExerciseEquipment[]
+
+  // Workout tracking relation
+  workouts             Workout[]
+  personalRecords      PersonalRecord[]
+  workoutPlanExercises WorkoutPlanExercise[] @relation("ExerciseWorkoutPlans")
+
+  @@index([slug])
+  @@index([category])
+  @@index([difficulty])
+  @@index([isActive])
+}
+
+// Join table for Exercise <-> MuscleGroup (many-to-many via enum)
+model ExerciseMuscleGroup {
+  id          String      @id @default(uuid())
+  exerciseId  String
+  exercise    Exercise    @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  muscleGroup MuscleGroup
+
+  // Is this a primary or secondary muscle?
+  isPrimary Boolean @default(false)
+
+  @@unique([exerciseId, muscleGroup])
+  @@index([exerciseId])
+  @@index([muscleGroup])
+}
+
+// Join table for Exercise <-> Equipment (many-to-many via enum)
+model ExerciseEquipment {
+  id         String    @id @default(uuid())
+  exerciseId String
+  exercise   Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  equipment  Equipment
+
+  // Is this required or optional equipment?
+  isRequired Boolean @default(true)
+
+  @@unique([exerciseId, equipment])
+  @@index([exerciseId])
+  @@index([equipment])
+}

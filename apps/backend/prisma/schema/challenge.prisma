@@ -1,0 +1,95 @@
+// Challenge / Competition System
+// Supports both admin-created Vara Challenges and user/community challenges
+
+enum ChallengeStatus {
+  DRAFT
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ChallengeType {
+  WORKOUT_COUNT     // Complete X workouts
+  STREAK_DAYS       // Maintain a streak for X days
+  WEIGHT_LOSS       // Lose X lbs/kg
+  STEPS_TOTAL       // Accumulate X steps
+  PR_COUNT          // Hit X personal records
+  CUSTOM            // Free-form with manual check-in
+}
+
+enum ChallengeVisibility {
+  PUBLIC    // Anyone can see and join
+  INVITE    // Only invited users can join
+  PRIVATE   // Only visible to creator
+}
+
+enum ChallengeParticipantStatus {
+  REGISTERED
+  ACTIVE
+  COMPLETED
+  WITHDRAWN
+}
+
+model Challenge {
+  id          String              @id @default(uuid())
+  creatorId   String
+  creator     User                @relation("UserChallenges", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  title       String              @db.VarChar(150)
+  description String              @db.Text
+  coverImage  String?             // S3 key for cover image
+  type        ChallengeType
+  status      ChallengeStatus     @default(DRAFT)
+  visibility  ChallengeVisibility @default(PUBLIC)
+
+  // Is this an official Vara challenge (admin-created) or community?
+  isOfficial  Boolean             @default(false)
+
+  // Goal configuration
+  goalValue   Int                 // Target value (e.g. 30 workouts, 7 days)
+  goalUnit    String              @db.VarChar(50) // "workouts", "days", "lbs", "steps", "PRs", etc.
+
+  // Schedule
+  startDate   DateTime
+  endDate     DateTime
+
+  // Limits
+  maxParticipants Int?            // null = unlimited
+
+  // Engagement metrics (denormalized)
+  participantCount Int            @default(0)
+
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  participants ChallengeParticipant[]
+  elevatePosts ElevatePost[]          @relation("ChallengeElevatePosts")
+
+  @@index([status])
+  @@index([creatorId])
+  @@index([isOfficial, status])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([visibility, status])
+}
+
+model ChallengeParticipant {
+  id          String                     @id @default(uuid())
+  challengeId String
+  challenge   Challenge                  @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User                       @relation("UserChallengeParticipations", fields: [userId], references: [id], onDelete: Cascade)
+
+  status      ChallengeParticipantStatus @default(REGISTERED)
+  progress    Int                        @default(0) // Current value towards goal
+  completedAt DateTime?
+
+  joinedAt    DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+
+  @@unique([challengeId, userId])
+  @@index([challengeId])
+  @@index([userId])
+  @@index([status])
+}

@@ -1,0 +1,11 @@
+// Tags Model - Shared across multiple features
+model Tag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Back-references (required by Prisma, not used for querying)
+  posts Blog[]
+}

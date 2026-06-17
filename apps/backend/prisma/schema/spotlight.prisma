@@ -1,0 +1,33 @@
+// Spotlight Models
+
+model Spotlight {
+  id          String    @id @default(uuid())
+  slug        String    @unique
+  name        String
+  username    String?
+  imageUrl    String
+  videoUrl    String?
+  tagline     String    @db.VarChar(280)
+  story       String    @db.Text
+  achievements String[]
+  sport       String
+  memberSince DateTime?
+  quote       String?
+  twitterUrl  String?
+  instagramUrl String?
+  featured    Boolean   @default(false)
+  status      Published @default(DRAFT)
+  isActive    Boolean   @default(true)
+  submitterUserId String?
+  submitterEmail  String?
+  reviewNotes     String?
+
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([status, isActive, featured])
+  @@index([publishedAt])
+  @@index([submitterUserId])
+}

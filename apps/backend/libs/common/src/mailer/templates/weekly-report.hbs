@@ -1,0 +1,304 @@
+<html>
+  <head>
+    <meta charset='utf-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <title>Weekly Progress Report</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #f4f4f5;
+        color: #18181b;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .header {
+        background: linear-gradient(135deg, #7c3aed, #6d28d9);
+        padding: 32px 24px;
+        text-align: center;
+      }
+      .header h1 {
+        color: #ffffff;
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      .header p {
+        color: #e0d5f5;
+        font-size: 14px;
+        margin: 0;
+      }
+      .body {
+        padding: 24px;
+      }
+      .greeting {
+        font-size: 16px;
+        margin-bottom: 16px;
+      }
+      .stats-grid {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .stats-grid td {
+        padding: 12px;
+        border-bottom: 1px solid #f4f4f5;
+        vertical-align: middle;
+      }
+      .stat-label {
+        color: #71717a;
+        font-size: 14px;
+      }
+      .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #7c3aed;
+        text-align: right;
+      }
+      .section-title {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #a1a1aa;
+        margin: 20px 0 8px;
+      }
+      .footer {
+        padding: 20px 24px;
+        text-align: center;
+        font-size: 12px;
+        color: #a1a1aa;
+        border-top: 1px solid #f4f4f5;
+      }
+      .footer a {
+        color: #7c3aed;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div style='padding: 20px;'>
+      <div class='container'>
+        <div class='header'>
+          <h1>Your Week in Review</h1>
+          <p>Here's how you performed this week</p>
+        </div>
+
+        <div class='body'>
+          <p class='greeting'>
+            {{#if name}}Hey {{name}},{{else}}Hey there,{{/if}}
+            here's your weekly summary.
+          </p>
+
+          <p class='section-title'>Training</p>
+          <table class='stats-grid'>
+            <tr>
+              <td class='stat-label'>Workouts Logged</td>
+              <td class='stat-value'>{{workoutsLogged}}</td>
+            </tr>
+            <tr>
+              <td class='stat-label'>Personal Records</td>
+              <td class='stat-value'>{{personalRecords}}</td>
+            </tr>
+          </table>
+
+          {{#if hasWorkoutSummary}}
+            <p class='section-title'>Workout Summary</p>
+            <table class='stats-grid'>
+              {{#if workoutDurationMinutes}}
+                <tr>
+                  <td class='stat-label'>Total Time</td>
+                  <td class='stat-value'>{{workoutDurationMinutes}} min</td>
+                </tr>
+              {{/if}}
+              {{#if totalVolume}}
+                <tr>
+                  <td class='stat-label'>Total Volume</td>
+                  <td class='stat-value'>{{totalVolumeFormatted}} lbs</td>
+                </tr>
+              {{/if}}
+              {{#if muscleGroupsTrained}}
+                <tr>
+                  <td class='stat-label'>Muscle Groups Trained</td>
+                  <td class='stat-value'>{{muscleGroupsTrained}}</td>
+                </tr>
+              {{/if}}
+            </table>
+          {{/if}}
+
+          {{#if hasSteps}}
+            <p class='section-title'>Steps</p>
+            <table class='stats-grid'>
+              <tr>
+                <td class='stat-label'>Avg Daily Steps</td>
+                <td class='stat-value'>{{avgDailySteps}}</td>
+              </tr>
+              <tr>
+                <td class='stat-label'>Goal Days Hit</td>
+                <td class='stat-value'>{{stepGoalDaysHit}} / 7</td>
+              </tr>
+            </table>
+          {{/if}}
+
+          <p class='section-title'>Habits &amp; Hydration</p>
+          <table class='stats-grid'>
+            <tr>
+              <td class='stat-label'>Habits Completed</td>
+              <td class='stat-value'>{{habitsCompleted}}</td>
+            </tr>
+            {{#if habitCompletionPercent}}
+              <tr>
+                <td class='stat-label'>Habit Completion</td>
+                <td class='stat-value'>{{habitCompletionPercent}}%</td>
+              </tr>
+            {{/if}}
+            {{#if currentHabitStreak}}
+              <tr>
+                <td class='stat-label'>Best Active Streak</td>
+                <td class='stat-value'>{{currentHabitStreak}} days</td>
+              </tr>
+            {{/if}}
+            <tr>
+              <td class='stat-label'>Water Goal Days Hit</td>
+              <td class='stat-value'>{{waterGoalDaysHit}} / 7</td>
+            </tr>
+          </table>
+
+          {{#if hasNutrition}}
+            <p class='section-title'>Nutrition</p>
+            <table class='stats-grid'>
+              {{#if caloriesAvg}}
+                <tr>
+                  <td class='stat-label'>Avg Daily Calories</td>
+                  <td class='stat-value'>{{caloriesAvg}}</td>
+                </tr>
+              {{/if}}
+              {{#if proteinAvg}}
+                <tr>
+                  <td class='stat-label'>Avg Daily Protein</td>
+                  <td class='stat-value'>{{proteinAvg}}g</td>
+                </tr>
+              {{/if}}
+              {{#if carbsAvg}}
+                <tr>
+                  <td class='stat-label'>Avg Daily Carbs</td>
+                  <td class='stat-value'>{{carbsAvg}}g</td>
+                </tr>
+              {{/if}}
+              {{#if fatsAvg}}
+                <tr>
+                  <td class='stat-label'>Avg Daily Fats</td>
+                  <td class='stat-value'>{{fatsAvg}}g</td>
+                </tr>
+              {{/if}}
+              {{#if nutritionLoggedDays}}
+                <tr>
+                  <td class='stat-label'>Days Logged</td>
+                  <td class='stat-value'>{{nutritionLoggedDays}}</td>
+                </tr>
+              {{/if}}
+            </table>
+          {{/if}}
+
+          {{#if hasMeasurementDeltas}}
+            <p class='section-title'>Body Measurements</p>
+            <table class='stats-grid'>
+              {{#if waistDelta}}
+                <tr>
+                  <td class='stat-label'>Waist Change</td>
+                  <td class='stat-value'>{{waistDelta}} in</td>
+                </tr>
+              {{/if}}
+              {{#if chestDelta}}
+                <tr>
+                  <td class='stat-label'>Chest Change</td>
+                  <td class='stat-value'>{{chestDelta}} in</td>
+                </tr>
+              {{/if}}
+              {{#if hipsDelta}}
+                <tr>
+                  <td class='stat-label'>Hips Change</td>
+                  <td class='stat-value'>{{hipsDelta}} in</td>
+                </tr>
+              {{/if}}
+            </table>
+          {{/if}}
+
+          {{#if hasAchievements}}
+            <p class='section-title'>Achievements</p>
+            <table class='stats-grid'>
+              <tr>
+                <td class='stat-label'>Badges Earned</td>
+                <td class='stat-value'>{{achievementsEarned}}</td>
+              </tr>
+            </table>
+          {{/if}}
+
+          {{#if hasChallenges}}
+            <p class='section-title'>Challenges</p>
+            <table class='stats-grid'>
+              <tr>
+                <td class='stat-label'>Active Challenges</td>
+                <td class='stat-value'>{{activeChallenges}}</td>
+              </tr>
+            </table>
+          {{/if}}
+
+          {{#if hasLifestyleAdherence}}
+            <p class='section-title'>Lifestyle Adherence</p>
+            <table class='stats-grid'>
+              <tr>
+                <td class='stat-label'>This Period</td>
+                <td class='stat-value'>{{lifestyleAdherenceScore}}%</td>
+              </tr>
+              {{#if lifestyleAdherencePrevious}}
+                <tr>
+                  <td class='stat-label'>Previous Period</td>
+                  <td class='stat-value'>{{lifestyleAdherencePrevious}}%</td>
+                </tr>
+              {{/if}}
+            </table>
+          {{/if}}
+
+          {{#if hasComplianceData}}
+            <p class='section-title'>Compliance</p>
+            <table class='stats-grid'>
+              {{#if stackCompliancePercent}}
+                <tr>
+                  <td class='stat-label'>Stack Adherence</td>
+                  <td class='stat-value'>{{stackCompliancePercent}}%</td>
+                </tr>
+              {{/if}}
+              {{#if injectionCompliancePercent}}
+                <tr>
+                  <td class='stat-label'>Injection Adherence</td>
+                  <td class='stat-value'>{{injectionCompliancePercent}}%</td>
+                </tr>
+              {{/if}}
+            </table>
+          {{/if}}
+
+          <p style='margin-top: 24px; font-size: 14px; color: #52525b;'>
+            {{motivationalQuote}}
+          </p>
+        </div>
+
+        <div class='footer'>
+          <p>&copy; {{year}} Vara Performance. All rights reserved.</p>
+          {{#if unsubscribeUrl}}
+            <p>
+              <a href='{{unsubscribeUrl}}'>Unsubscribe</a>
+              &middot;
+              <a href='{{preferencesUrl}}'>Email Preferences</a>
+            </p>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

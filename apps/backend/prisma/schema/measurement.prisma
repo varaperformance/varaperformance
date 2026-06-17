@@ -1,0 +1,40 @@
+// Body Measurements Tracking
+// Measurements are PHI under HIPAA - must be encrypted
+// Uses AES-256-GCM envelope encryption via EncryptionService
+
+enum MeasurementUnit {
+  IN
+  CM
+}
+
+model BodyMeasurement {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserBodyMeasurements", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Unit (not encrypted — needed for display logic)
+  unit MeasurementUnit @default(IN)
+
+  // Encrypted measurement data (PHI under HIPAA)
+  // Decrypted format: JSON { neck?, shoulders?, chest?, leftBicep?, rightBicep?, waist?, hips?, leftThigh?, rightThigh?, leftCalf?, rightCalf? }
+  encryptedData Bytes
+  dataIv        Bytes
+  dataAuthTag   Bytes
+  wrappedKey    Bytes
+
+  // Optional note (also encrypted if provided)
+  encryptedNote  Bytes?
+  noteIv         Bytes?
+  noteAuthTag    Bytes?
+  noteWrappedKey Bytes?
+
+  // Date of measurement (not encrypted - needed for queries + Climb photo matching)
+  loggedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, loggedAt])
+  @@index([loggedAt])
+}

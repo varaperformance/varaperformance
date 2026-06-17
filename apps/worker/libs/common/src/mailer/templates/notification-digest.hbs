@@ -1,0 +1,152 @@
+<html lang='en'>
+  <head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <title>Your Notification Digest</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background-color: #ffffff;
+        border-radius: 8px;
+        padding: 40px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .logo {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .logo h1 {
+        color: #7c3aed;
+        margin: 0;
+        font-size: 24px;
+      }
+      h2 {
+        color: #1a1a1a;
+        margin-top: 0;
+      }
+      .summary {
+        background-color: #f3f0ff;
+        border-left: 4px solid #7c3aed;
+        border-radius: 4px;
+        padding: 12px 16px;
+        margin-bottom: 24px;
+        font-size: 15px;
+        color: #4c1d95;
+      }
+      .notification-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .notification-item {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 14px 0;
+      }
+      .notification-item:last-child {
+        border-bottom: none;
+      }
+      .notification-title {
+        font-weight: 600;
+        color: #1a1a1a;
+        margin: 0 0 4px 0;
+        font-size: 15px;
+      }
+      .notification-body {
+        color: #6b7280;
+        margin: 0;
+        font-size: 14px;
+      }
+      .notification-link {
+        display: inline-block;
+        color: #7c3aed;
+        text-decoration: none;
+        font-size: 13px;
+        margin-top: 4px;
+      }
+      .cta-button {
+        display: inline-block;
+        background-color: #7c3aed;
+        color: #ffffff !important;
+        text-decoration: none;
+        padding: 14px 28px;
+        border-radius: 8px;
+        font-weight: 600;
+        margin: 20px 0;
+      }
+      .cta-container {
+        text-align: center;
+      }
+      .footer {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+        text-align: center;
+        color: #6b7280;
+        font-size: 12px;
+      }
+      .footer a {
+        color: #7c3aed;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='container'>
+      <div class='logo'>
+        <h1>Vara Performance</h1>
+      </div>
+
+      <h2>Your Notification Digest</h2>
+
+      {{#if name}}
+      <p>Hi {{name}},</p>
+      {{/if}}
+
+      <div class='summary'>
+        You have <strong>{{unreadCount}}</strong> unread notification{{#if pluralize}}s{{/if}} since your last visit.
+      </div>
+
+      <ul class='notification-list'>
+        {{#each notifications}}
+        <li class='notification-item'>
+          <p class='notification-title'>{{this.title}}</p>
+          <p class='notification-body'>{{this.body}}</p>
+          {{#if this.actionUrl}}
+          <a href='{{this.actionUrl}}' class='notification-link'>View details &rarr;</a>
+          {{/if}}
+        </li>
+        {{/each}}
+      </ul>
+
+      <div class='cta-container'>
+        <a href='https://varaperformance.com/notifications' class='cta-button'>View All Notifications</a>
+      </div>
+
+      <div class='footer'>
+        <p>&copy; {{year}} Vara Performance. All rights reserved.</p>
+        <p>
+          <a href='https://varaperformance.com/privacy'>Privacy Policy</a>
+          |
+          <a href='https://varaperformance.com/terms'>Terms of Service</a>
+        </p>
+        {{#if unsubscribeUrl}}
+        <p>
+          <a href='{{unsubscribeUrl}}'>Unsubscribe</a>
+          |
+          <a href='{{preferencesUrl}}'>Manage Preferences</a>
+        </p>
+        {{/if}}
+      </div>
+    </div>
+  </body>
+</html>

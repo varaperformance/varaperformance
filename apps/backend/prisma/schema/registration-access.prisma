@@ -1,0 +1,26 @@
+// Registration access models
+
+model SiteAccessMode {
+  id                 String   @id @default("default")
+  privateModeEnabled Boolean  @default(false)
+  updatedBy          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model RegistrationCode {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  createdById   String?
+  createdBy     User?    @relation("CreatedRegistrationCodes", fields: [createdById], references: [id], onDelete: SetNull)
+  ownerUserId   String?
+  ownerUser     User?    @relation("OwnedRegistrationCodes", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  usedByUserId  String?
+  usedByUser    User?    @relation("UsedRegistrationCodes", fields: [usedByUserId], references: [id], onDelete: SetNull)
+  usedAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([ownerUserId, usedAt])
+  @@index([createdById])
+}

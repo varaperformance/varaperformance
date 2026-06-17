@@ -1,0 +1,45 @@
+// Gym & Location Models
+
+model Gym {
+  id          String   @id @default(uuid())
+  mapboxId    String?  @unique // External ID from Mapbox for deduplication
+  name        String
+  description String?
+  logo        String?
+  website     String?
+  email       String?
+  phone       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  locations       GymLocation[]    @relation("GymLocations")
+  profiles        Profile[]        @relation("ProfileGyms")
+  checkIns        ElevatePost[]    @relation("GymCheckIns")
+  workoutSessions WorkoutSession[] @relation("GymWorkoutSessions")
+
+  @@index([name])
+}
+
+model GymLocation {
+  id        String   @id @default(uuid())
+  address   String
+  city      String
+  state     String?
+  country   String
+  zipCode   String?
+  latitude  Float?
+  longitude Float?
+  phone     String?
+  email     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  gymId String
+  gym   Gym    @relation("GymLocations", fields: [gymId], references: [id], onDelete: Cascade)
+
+  @@index([gymId])
+  @@index([city, country])
+}

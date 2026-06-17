@@ -1,0 +1,35 @@
+enum ClimbCategory {
+  DAILY
+  FACE
+  ABS
+  BACK
+  LEGS
+  GLUTES
+  ARMS
+  CHEST
+  SHOULDERS
+}
+
+model ClimbEntry {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation("UserClimbEntries", fields: [userId], references: [id], onDelete: Cascade)
+  category     ClimbCategory @default(DAILY)
+  imageUrl     String
+  note         String?  @db.VarChar(280)
+
+  // GDPR Art. 32 — Encrypted PII (imageUrl, note)
+  eClimbContent          Bytes?
+  climbContentIv         Bytes?
+  climbContentAuthTag    Bytes?
+  climbContentWrappedKey Bytes?
+
+  capturedAt   DateTime @default(now())
+  capturedDate DateTime @db.Date
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, capturedDate, category])
+  @@index([userId])
+  @@index([userId, category, capturedDate])
+}

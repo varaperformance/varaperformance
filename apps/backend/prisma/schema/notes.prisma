@@ -1,0 +1,20 @@
+// Notes Model - End-to-End Encrypted
+// Uses AES-256-GCM envelope encryption via EncryptionService
+
+model Note {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserNotes", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Encrypted JSON: { title: string, content: string }
+  encryptedData Bytes
+  dataIv        Bytes
+  dataAuthTag   Bytes
+  wrappedKey    Bytes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+}

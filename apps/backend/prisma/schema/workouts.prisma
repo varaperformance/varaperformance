@@ -1,0 +1,186 @@
+// Workout Tracking Models
+// User workout sessions with exercises and sets
+
+enum WorkoutPrivacy {
+  PRIVATE // Only the user can see
+  FRIENDS // Friends can see on feed
+  PUBLIC // Anyone can see on feed
+}
+
+enum WorkoutSessionSource {
+  MANUAL
+  STRAVA
+  APPLE_WATCH
+  FITBIT
+  WHOOP
+  OURA_RING
+  GOOGLE_PIXEL_WATCH
+  SAMSUNG_GALAXY_WATCH
+  APPLE_HEALTH
+  GOOGLE_FIT
+  SAMSUNG_HEALTH
+  WITHINGS
+  MYFITNESSPAL
+  LOSE_IT
+  GARMIN
+  OTHER
+}
+
+model WorkoutSession {
+  id        String         @id @default(uuid())
+  userId    String
+  user      User           @relation("UserWorkoutSessions", fields: [userId], references: [id], onDelete: Cascade)
+  title     String? // Optional title like "Chest Day", "Morning Run"
+  performed DateTime       @default(now()) // Legacy field - use startedAt for new sessions
+  privacy   WorkoutPrivacy @default(PRIVATE)
+  source    WorkoutSessionSource @default(MANUAL)
+
+  // Optional metadata for imported external activities.
+  externalProvider     String?
+  externalActivityId   String?
+  externalActivityType String?
+  externalSummary      Json?
+  importedAt           DateTime?
+
+  // HealthKit / Health Connect export tracking (prevents re-export)
+  healthKitId          String?
+
+  workouts  Workout[]
+
+  // Gym location for session (null = private/home workout)
+  gymId String?
+  gym   Gym?    @relation("GymWorkoutSessions", fields: [gymId], references: [id], onDelete: SetNull)
+
+  // Session timing
+  startedAt DateTime  @default(now()) // When session began
+  endedAt   DateTime? // When session completed (null = in progress)
+
+  // Encrypted notes using AES-256-GCM envelope encryption (never shared to feed)
+  encryptedNotes  Bytes?
+  notesIv         Bytes?
+  notesAuthTag    Bytes?
+  notesWrappedKey Bytes?
+
+  created DateTime @default(now())
+  updated DateTime @updatedAt
+
+  // Elevate post link (when shared to feed)
+  elevatePost ElevatePost? @relation("WorkoutElevatePost")
+  
+  // Link to workout plan (if this session was from a plan)
+  planCompletedDay WorkoutPlanCompletedDay? @relation("WorkoutSessionPlanDay")
+
+  @@index([userId])
+  @@index([performed])
+  @@index([userId, privacy])
+  @@index([userId, source, performed])
+  @@index([externalProvider, externalActivityId])
+  @@unique([userId, externalProvider, externalActivityId])
+  @@unique([userId, healthKitId])
+  @@index([gymId])
+  @@index([startedAt])
+  @@index([gymId, startedAt])
+  @@map("workout_sessions")
+}
+
+model Workout {
+  id         String         @id @default(uuid())
+  sessionId  String
+  session    WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise   Exercise       @relation(fields: [exerciseId], references: [id])
+  sets       WorkoutSet[]
+  sortOrder  Int            @default(0) // Order within session
+  completed  Boolean        @default(false) // User marked as done (for coach tracking)
+  created    DateTime       @default(now())
+  updated    DateTime       @updatedAt
+
+  @@index([sessionId])
+  @@index([exerciseId])
+  @@map("workouts")
+}
+
+model WorkoutSet {
+  id        String   @id @default(uuid())
+  workoutId String
+  workout   Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  setNumber Int
+  reps      Int?
+  weight    Float?
+  duration  Int? // seconds, for timed exercises
+  distance  Float? // meters, for cardio
+  created   DateTime @default(now())
+  updated   DateTime @updatedAt
+
+  // PR achieved on this set
+  personalRecords PersonalRecord[]
+
+  @@index([workoutId])
+  @@map("workout_sets")
+}
+
+// Personal Records - track user's best performances
+enum PRType {
+  MAX_WEIGHT // Heaviest weight lifted (strength)
+  MAX_REPS // Most reps in a set (any)
+  MAX_VOLUME // Weight × reps for a set (strength)
+  BEST_PACE // Fastest pace distance/duration (cardio)
+  LONGEST_DIST // Longest distance (cardio)
+  LONGEST_TIME // Longest duration (endurance)
+}
+
+model PersonalRecord {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation("UserPersonalRecords", fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+  type       PRType
+
+  // The PR value (interpretation depends on type)
+  value Float
+
+  // Optional context for the PR
+  reps     Int? // For MAX_WEIGHT context (e.g., "225 lbs for 5 reps")
+  weight   Float? // For MAX_REPS context (e.g., "20 reps at 135 lbs")
+  duration Int? // seconds
+  distance Float? // meters
+
+  // Link to the set where this PR was achieved
+  workoutSetId String?
+  workoutSet   WorkoutSet? @relation(fields: [workoutSetId], references: [id], onDelete: SetNull)
+
+  // When was this PR achieved
+  achievedAt DateTime @default(now())
+  created    DateTime @default(now())
+  updated    DateTime @updatedAt
+
+  // Elevate post link (when shared to feed)
+  elevatePost ElevatePost? @relation("PersonalRecordElevatePost")
+
+  // Only one PR per type per exercise per user
+  @@unique([userId, exerciseId, type])
+  @@index([userId])
+  @@index([exerciseId])
+  @@index([userId, exerciseId])
+  @@map("personal_records")
+}
+
+// Workout Goals - weekly frequency and muscle group targets
+model WorkoutGoal {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation("UserWorkoutGoal", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Weekly workout frequency target
+  weeklyWorkouts Int @default(4)
+
+  // Muscle group weekly set targets (stored as JSON)
+  // Format: { "CHEST": 16, "BACK": 18, "SHOULDERS": 14, "ARMS": 12, "LEGS": 16, "CORE": 10 }
+  muscleTargets Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("workout_goals")
+}

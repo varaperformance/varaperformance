@@ -1,0 +1,59 @@
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // e.g., "ADMIN", "USER", "MODERATOR"
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  permissions RolePermission[]
+  users       UserRole[]
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  resource    String // e.g., "user", "incident", "service"
+  action      String // e.g., "create", "read", "update", "delete"
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  roles RolePermission[]
+  users UserPermission[]
+
+  @@unique([resource, action]) // "user:create" must be unique
+}
+
+// Explicit join table for Role-Permission (allows adding metadata like conditions)
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@id([roleId, permissionId])
+}
+
+// Join table for User-Role
+model UserRole {
+  userId    String
+  roleId    String
+  user      User     @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, roleId])
+}
+
+// Join table for User-Permission (direct permission assignment)
+model UserPermission {
+  userId       String
+  permissionId String
+  user         User       @relation("UserPermissions", fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@id([userId, permissionId])
+}

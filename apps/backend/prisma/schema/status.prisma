@@ -1,0 +1,45 @@
+enum ServiceStatus {
+  OPERATIONAL
+  DEGRADED
+  OUTAGE
+  MAINTENANCE
+}
+
+enum IncidentStatus {
+  INVESTIGATING
+  IDENTIFIED
+  MONITORING
+  RESOLVED
+}
+
+model Service {
+  id          String        @id @default(uuid())
+  name        String        @unique
+  description String
+  status      ServiceStatus @default(OPERATIONAL)
+  uptime      Float         @default(99.99) // Percentage
+  order       Int           @default(0) // Display order
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Incident {
+  id        String         @id @default(uuid())
+  title     String
+  status    IncidentStatus @default(INVESTIGATING)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  // Relations
+  updates IncidentUpdate[]
+}
+
+model IncidentUpdate {
+  id         String   @id @default(uuid())
+  incidentId String
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  message    String   @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([incidentId])
+}

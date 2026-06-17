@@ -1,0 +1,134 @@
+// ============================================
+// Notification Schema
+// ============================================
+
+enum NotificationType {
+  // Coaching
+  BOOKING_REQUESTED         // Client requested booking
+  BOOKING_APPROVED          // Coach approved booking
+  BOOKING_CONFIRMED         // Payment confirmed
+  BOOKING_CANCELLED         // Booking cancelled
+  
+  // Messaging
+  MESSAGE_RECEIVED          // New message received
+  
+  // Payment
+  PAYMENT_RECEIVED          // Payment received (coach)
+  PAYMENT_FAILED            // Payment failed
+  SUBSCRIPTION_RENEWED      // Subscription renewed
+  SUBSCRIPTION_CANCELLED    // Subscription cancelled
+  
+  // Gym Partners
+  GYM_PARTNER_REQUEST       // Someone sent you a gym partner request
+  GYM_PARTNER_ACCEPTED      // Your gym partner request was accepted
+  
+  // Workout Plans
+  WORKOUT_PLAN_ASSIGNED     // Coach assigned you a workout plan
+  
+  // Commerce
+  ORDER_CONFIRMED           // Shop order payment confirmed
+  ORDER_SHIPPED             // Shop order shipped with tracking
+  ORDER_REFUNDED            // Shop order refunded
+
+  // Elevate Social
+  POST_COMMENT_RECEIVED     // Someone commented on your post
+  POST_HIGH_FIVED           // Someone high-fived your post
+
+  // Team / Ambassador
+  AMBASSADOR_APPLICATION_APPROVED  // Ambassador application approved
+  AMBASSADOR_APPLICATION_DENIED    // Ambassador application denied
+
+  // Health Adherence
+  STACK_REMINDER            // Stack supplement slot reminder
+  INJECTION_REMINDER        // Daily injection check-in reminder
+  CLIMB_REMINDER            // Daily Climb selfie reminder
+
+  // Achievements
+  ACHIEVEMENT_UNLOCKED      // User earned a new badge/achievement
+
+  // Calendar
+  SESSION_REMINDER          // Upcoming coaching session reminder
+
+  // System
+  SYSTEM_ANNOUNCEMENT       // System-wide announcement
+  PROFILE_VERIFIED          // Profile verified
+  REVIEW_RECEIVED           // New review received
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   // Recipient
+  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  
+  type      NotificationType
+  title     String
+  body      String
+  
+  // Optional link for click action
+  actionUrl String?
+  
+  // Additional data as JSON (e.g., bookingId, coachId, etc.)
+  data      Json?
+
+  // GDPR Art. 32 — Encrypted PII (body, data may contain PII snippets)
+  eNotification          Bytes?
+  notificationIv         Bytes?
+  notificationAuthTag    Bytes?
+  notificationWrappedKey Bytes?
+
+  // Optional idempotency key for jobs that must avoid duplicate inserts
+  idempotencyKey String? @unique
+  
+  // Read/unread status
+  read      Boolean  @default(false)
+  readAt    DateTime?
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@index([type])
+  @@index([userId, type, createdAt])
+}
+
+// ============================================
+// Notification Preferences
+// ============================================
+
+model NotificationPreference {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserNotificationPreferences", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Per-category toggles (all default to true)
+  bookings         Boolean @default(true) // BOOKING_REQUESTED, BOOKING_APPROVED, BOOKING_CONFIRMED, BOOKING_CANCELLED
+  messages         Boolean @default(true) // MESSAGE_RECEIVED
+  payments         Boolean @default(true) // PAYMENT_RECEIVED, PAYMENT_FAILED
+  subscriptions    Boolean @default(true) // SUBSCRIPTION_RENEWED, SUBSCRIPTION_CANCELLED
+  gymPartners      Boolean @default(true) // GYM_PARTNER_REQUEST, GYM_PARTNER_ACCEPTED
+  workoutPlans     Boolean @default(true) // WORKOUT_PLAN_ASSIGNED
+  reviews          Boolean @default(true) // REVIEW_RECEIVED
+  commerce         Boolean @default(true) // ORDER_CONFIRMED, ORDER_SHIPPED, ORDER_REFUNDED
+  social           Boolean @default(true) // POST_COMMENT_RECEIVED, POST_HIGH_FIVED
+  sessionReminders    Boolean @default(true) // SESSION_REMINDER
+  stackManagement     Boolean @default(true) // STACK_REMINDER
+  injectionTracker    Boolean @default(true) // INJECTION_REMINDER
+  climb               Boolean @default(true) // CLIMB_REMINDER
+  achievements        Boolean @default(true) // ACHIEVEMENT_UNLOCKED
+  ambassador          Boolean @default(true) // AMBASSADOR_APPLICATION_APPROVED, AMBASSADOR_APPLICATION_DENIED
+  systemAnnouncements Boolean @default(true) // SYSTEM_ANNOUNCEMENT, PROFILE_VERIFIED
+
+  // Channel controls
+  inApp            Boolean @default(true) // In-app / WebSocket notifications
+  digest           Boolean @default(true) // Daily digest emails
+
+  // Quiet hours (per-user override)
+  quietHoursEnabled Boolean  @default(false)
+  quietHoursStart   Int      @default(22) // 0-23
+  quietHoursEnd     Int      @default(7)  // 0-23
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId])
+}

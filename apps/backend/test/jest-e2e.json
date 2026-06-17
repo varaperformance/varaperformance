@@ -1,0 +1,23 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@app/common(|/.*)$": "<rootDir>/../libs/common/src/$1",
+    "^@app/security(|/.*)$": "<rootDir>/../libs/security/src/$1",
+    "^@app/database(|/.*)$": "<rootDir>/../libs/database/src/$1",
+    "^@generated/prisma$": "<rootDir>/../src/generated/prisma/client.ts",
+    "^@generated/prisma/(.*)$": "<rootDir>/../src/generated/prisma/$1",
+    "^src/(.*)$": "<rootDir>/../src/$1",
+    "^\\./enums\\.js$": "<rootDir>/../src/generated/prisma/enums.ts",
+    "^\\./internal/class\\.js$": "<rootDir>/../src/generated/prisma/internal/class.ts",
+    "^\\./internal/prismaNamespace\\.js$": "<rootDir>/../src/generated/prisma/internal/prismaNamespace.ts",
+    "^\\./internal/prismaNamespaceBrowser\\.js$": "<rootDir>/../src/generated/prisma/internal/prismaNamespaceBrowser.ts",
+    "^\\./avatar\\.service\\.js$": "<rootDir>/../libs/common/src/avatar/avatar.service.ts",
+    "^\\./avatar\\.module\\.js$": "<rootDir>/../libs/common/src/avatar/avatar.module.ts"
+  }
+}

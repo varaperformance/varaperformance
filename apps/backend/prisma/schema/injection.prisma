@@ -1,0 +1,45 @@
+// Injection Tracking Models
+// Injection tracking data is treated as PHI and stored encrypted.
+
+model InjectionProtocol {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserInjectionProtocols", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Encrypted JSON:
+  // { name: string, defaultDose?: string | null, unit?: string | null, route?: string | null, notes?: string | null }
+  encryptedData Bytes
+  dataIv        Bytes
+  dataAuthTag   Bytes
+  wrappedKey    Bytes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logs InjectionLog[] @relation("ProtocolInjectionLogs")
+
+  @@index([userId])
+  @@index([userId, updatedAt])
+}
+
+model InjectionLog {
+  id         String             @id @default(uuid())
+  userId     String
+  user       User               @relation("UserInjectionLogs", fields: [userId], references: [id], onDelete: Cascade)
+  protocolId String?
+  protocol   InjectionProtocol? @relation("ProtocolInjectionLogs", fields: [protocolId], references: [id], onDelete: SetNull)
+
+  // Encrypted JSON:
+  // { name: string, dose?: string | null, unit?: string | null, route?: string | null, site?: string | null, notes?: string | null }
+  encryptedData Bytes
+  dataIv        Bytes
+  dataAuthTag   Bytes
+  wrappedKey    Bytes
+
+  loggedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, loggedAt])
+  @@index([protocolId, loggedAt])
+}

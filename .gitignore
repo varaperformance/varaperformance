@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test coverage
+coverage/
+
+# Generated
+*.generated.*
+
+# Kubernetes secrets (never commit!)
+infrastructure/k8s/**/secret.yaml
+infrastructure/k8s/**/cloudflare-secret.yaml
+*-secret.yaml
+
+# API client local state (can capture live tokens/credentials)
+.yaak/
+garage/
+
+# Large data files
+hack/openfoodfacts-products.jsonl.gz
+hack/openfoodfacts-us-foods.jsonl
+hack/foods.jsonl
+hack/usda_data/
+hack/FoodData_Central_csv_2025-12-18.zip
+hack/local/

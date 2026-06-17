@@ -1,0 +1,269 @@
+// Elevate Social Feed Models
+
+enum ElevatePostType {
+  TEXT
+  WORKOUT
+  MILESTONE
+  PHOTO
+  PR // Personal Record
+  CHECK_IN // Gym check-in
+  ACHIEVEMENT // Shared achievement badge
+  CHALLENGE // Shared challenge
+}
+
+enum MilestoneType {
+  STREAK
+  WORKOUT_COUNT
+  WEIGHT_GOAL
+  PR_COUNT
+  CUSTOM
+}
+
+enum PostPrivacy {
+  PRIVATE  // Only the author can see
+  FRIENDS  // Only friends/followers can see
+  PUBLIC   // Everyone can see
+}
+
+// Main post model for Elevate feed
+model ElevatePost {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation("UserElevatePosts", fields: [userId], references: [id], onDelete: Cascade)
+  type      ElevatePostType
+  content   String          @db.Text // Main text content
+  images    String[]        // Array of image URLs
+  privacy   PostPrivacy     @default(PUBLIC)
+
+  // Workout-specific data (when type = WORKOUT)
+  workoutSessionId String?         @unique
+  workoutSession   WorkoutSession? @relation("WorkoutElevatePost", fields: [workoutSessionId], references: [id], onDelete: SetNull)
+
+  // Milestone data (when type = MILESTONE)
+  milestoneType  MilestoneType?
+  milestoneValue Int?
+  milestoneLabel String?
+
+  // Personal Record reference (when type = PR)
+  personalRecordId String?         @unique
+  personalRecord   PersonalRecord? @relation("PersonalRecordElevatePost", fields: [personalRecordId], references: [id], onDelete: SetNull)
+
+  // Check-in data (when type = CHECK_IN)
+  checkInGymId   String?
+  checkInGymName String?
+  checkInGym     Gym?    @relation("GymCheckIns", fields: [checkInGymId], references: [id], onDelete: SetNull)
+
+  // Achievement data (when type = ACHIEVEMENT)
+  achievementId String?
+  achievement   Achievement? @relation("AchievementElevatePosts", fields: [achievementId], references: [id], onDelete: SetNull)
+
+  // Challenge data (when type = CHALLENGE)
+  challengeId String?
+  challenge   Challenge? @relation("ChallengeElevatePosts", fields: [challengeId], references: [id], onDelete: SetNull)
+
+  // Engagement metrics (denormalized for performance)
+  highFiveCount Int @default(0)
+  commentCount  Int @default(0)
+  reportCount   Int @default(0)
+
+  // Momentum score (pre-computed by worker for trending feed)
+  momentumScore     Float     @default(0)
+  momentumUpdatedAt DateTime?
+
+  // Moderation fields
+  moderationLocked Boolean @default(false) // Post locked due to reports - user can't change privacy
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  reactions ElevateReaction[] @relation("PostReactions")
+  comments  ElevateComment[]  @relation("PostComments")
+  savedBy   ElevateSavedPost[] @relation("SavedPosts")
+  reports   ElevateReport[]   @relation("PostReports")
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@index([momentumScore])
+  @@index([userId, createdAt])
+  @@index([privacy, momentumScore])
+}
+
+// High fives (likes) on posts
+model ElevateReaction {
+  id        String      @id @default(uuid())
+  postId    String
+  post      ElevatePost @relation("PostReactions", fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation("UserElevateReactions", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+// Comments on posts
+model ElevateComment {
+  id        String      @id @default(uuid())
+  postId    String
+  post      ElevatePost @relation("PostComments", fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation("UserElevateComments", fields: [userId], references: [id], onDelete: Cascade)
+  content   String      @db.Text
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  deletedAt DateTime?
+
+  // Self-referencing for threaded comments (replies)
+  parentId String?
+  parent   ElevateComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  ElevateComment[] @relation("CommentReplies")
+
+  @@index([postId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([deletedAt])
+}
+
+// Saved/bookmarked posts
+model ElevateSavedPost {
+  id        String      @id @default(uuid())
+  postId    String
+  post      ElevatePost @relation("SavedPosts", fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation("UserSavedPosts", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@unique([postId, userId])
+  @@index([userId])
+  @@index([postId])
+}
+
+// Report reasons for posts
+enum ElevateReportReason {
+  SPAM
+  HARASSMENT
+  HATE_SPEECH
+  VIOLENCE
+  NUDITY
+  FALSE_INFO
+  SCAM
+  OTHER
+}
+
+// Report status for moderation workflow
+enum ElevateReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+// Reported posts for moderation
+model ElevateReport {
+  id        String              @id @default(uuid())
+  postId    String
+  post      ElevatePost         @relation("PostReports", fields: [postId], references: [id], onDelete: Cascade)
+  userId    String              // User who reported the post
+  user      User                @relation("UserElevateReports", fields: [userId], references: [id], onDelete: Cascade)
+  reason    ElevateReportReason
+  details   String?             @db.Text // Optional additional details
+  status    ElevateReportStatus @default(PENDING)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  // Moderation fields
+  reviewedById String?
+  reviewedBy   User?    @relation("ModeratorReviews", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  reviewNote   String?  @db.Text
+
+  @@unique([postId, userId]) // One report per user per post
+  @@index([postId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Story media type
+enum StoryMediaType {
+  IMAGE
+  VIDEO
+}
+
+// Stories (short-form content like TikTok/Reels)
+model ElevateStory {
+  id        String         @id @default(uuid())
+  userId    String
+  user      User           @relation("UserElevateStories", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Media
+  mediaType StoryMediaType
+  mediaUrl  String         // URL to the video/image
+  thumbnail String?        // Optional thumbnail for videos
+  duration  Int?           // Duration in seconds (for videos)
+  
+  // Content
+  caption   String?        @db.Text // Optional caption/text overlay
+  
+  // Engagement
+  viewCount Int            @default(0)
+  
+  // Stories typically expire after 24 hours
+  expiresAt DateTime       @default(dbgenerated("(now() + '24:00:00'::interval)"))
+  
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  
+  // Track who viewed the story
+  views     ElevateStoryView[]
+  
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
+// Track story views
+model ElevateStoryView {
+  id        String        @id @default(uuid())
+  storyId   String
+  story     ElevateStory  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation("UserStoryViews", fields: [userId], references: [id], onDelete: Cascade)
+  viewedAt  DateTime      @default(now())
+  
+  @@unique([storyId, userId]) // One view per user per story
+  @@index([storyId])
+  @@index([userId])
+}
+
+// Gym Partner relationship status
+enum GymPartnerStatus {
+  PENDING   // Request sent, awaiting response
+  ACCEPTED  // Both users are gym partners
+  REJECTED  // Request was rejected
+  BLOCKED   // User blocked the requester
+}
+
+// Gym Partner connections (like friends for the gym)
+model GymPartner {
+  id          String           @id @default(uuid())
+  requesterId String
+  requester   User             @relation("GymPartnerRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiverId  String
+  receiver    User             @relation("GymPartnerReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+  status      GymPartnerStatus @default(PENDING)
+  
+  // Track when status changed
+  respondedAt DateTime?        // When receiver responded
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  @@unique([requesterId, receiverId]) // One request per pair (direction matters)
+  @@index([requesterId, status])
+  @@index([receiverId, status])
+}

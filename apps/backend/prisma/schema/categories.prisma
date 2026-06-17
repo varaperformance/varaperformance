@@ -1,0 +1,12 @@
+// Categories Model - Shared across multiple features
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Back-references (required by Prisma, not used for querying)
+  posts Blog[]
+}

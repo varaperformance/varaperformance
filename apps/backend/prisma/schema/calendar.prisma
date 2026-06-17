@@ -1,0 +1,50 @@
+enum CalendarEventType {
+  EVENT
+  MEETING
+}
+
+enum CalendarEventVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model CalendarEvent {
+  id String @id @default(uuid())
+
+  ownerUserId String
+  ownerUser   User   @relation("UserCalendarEvents", fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  participantUserId String?
+  participantUser   User?  @relation("UserCalendarMeetings", fields: [participantUserId], references: [id], onDelete: SetNull)
+
+  title       String
+  description String?  @db.Text
+  location    String?
+  type        CalendarEventType       @default(EVENT)
+  visibility  CalendarEventVisibility @default(PUBLIC)
+  allDay      Boolean                 @default(false)
+
+  startAt  DateTime
+  endAt    DateTime
+  timezone String @default("UTC")
+
+  recurrenceFrequency RecurrenceFrequency?
+  recurrenceInterval  Int      @default(1)
+  recurrenceByWeekday Int[]
+  recurrenceUntil     DateTime?
+  recurrenceCount     Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerUserId, startAt])
+  @@index([participantUserId, startAt])
+  @@index([startAt, endAt])
+}

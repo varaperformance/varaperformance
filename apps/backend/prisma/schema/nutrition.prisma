@@ -1,0 +1,446 @@
+// Nutrition/Food Tracking Models
+// MyFitnessPal-style food database and logging
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACKS
+}
+
+enum ServingUnit {
+  G        // Grams
+  ML       // Milliliters
+  OZ       // Ounces
+  CUP      // Cups
+  TBSP     // Tablespoons
+  TSP      // Teaspoons
+  PIECE    // Piece/Item
+  SERVING  // Generic serving
+  SLICE    // Slice
+  BOWL     // Bowl
+  CONTAINER // Container
+  SCOOP    // Scoop (for powder supplements)
+}
+
+enum FoodSource {
+  SYSTEM     // Pre-loaded verified foods
+  USER       // User-created custom foods
+  COMMUNITY  // Shared by other users (admin approved)
+  USDA       // USDA FoodData Central
+  OPENFOOD   // Open Food Facts database
+}
+
+// Master food database
+model Food {
+  id        String @id @default(uuid())
+  
+  // Basic info
+  name        String
+  brand       String?         // Brand name (e.g., "Chobani", "Kirkland")
+  description String?         @db.VarChar(500)
+  barcode     String?         @unique // UPC/EAN barcode for scanning
+  
+  // Source tracking
+  source      FoodSource      @default(USER)
+  isVerified  Boolean         @default(false) // Admin verified accuracy
+  isPrivate   Boolean         @default(false) // Only creator can see/edit
+  
+  // Created by user (null for system foods)
+  createdById String?
+  createdBy   User?           @relation("UserCreatedFoods", fields: [createdById], references: [id], onDelete: SetNull)
+  
+  // Default serving info
+  servingSize     Float       @default(1)
+  servingUnit     ServingUnit @default(SERVING)
+  servingLabel    String?     // e.g., "1 cup (240g)", "1 medium apple"
+  
+  // Household measure alternative (optional)
+  householdSize   Float?      // e.g., 1 for "1 cup"
+  householdUnit   String?     // e.g., "cup", "slice", "medium"
+  
+  // Nutritional values per serving
+  calories        Float       @default(0)
+  protein         Float       @default(0)  // grams
+  carbohydrates   Float       @default(0)  // grams
+  fat             Float       @default(0)  // grams
+  
+  // Extended nutrition (optional)
+  fiber           Float?      // grams
+  sugar           Float?      // grams
+  saturatedFat    Float?      // grams
+  transFat        Float?      // grams
+  cholesterol     Float?      // mg
+  sodium          Float?      // mg
+  potassium       Float?      // mg
+  vitaminA        Float?      // % daily value
+  vitaminC        Float?      // % daily value
+  calcium         Float?      // % daily value
+  iron            Float?      // % daily value
+  
+  // Metadata
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  // Relations
+  foodLogs    FoodLog[]       @relation("FoodToLogs")
+  servings    FoodServing[]   @relation("FoodServings")
+  recipeIngredients RecipeIngredient[]
+  
+  // Quick favorites for user
+  favoritedBy UserFavoriteFood[] @relation("FoodFavorites")
+  mealPlanItems MealPlanItem[]   @relation("MealPlanFoods")
+  groceryListItems GroceryListItem[] @relation("GroceryListFoods")
+
+  @@index([name])
+  @@index([barcode])
+  @@index([brand])
+  @@index([source])
+  @@index([createdById])
+  @@index([isVerified])
+}
+
+// Additional serving sizes for a food
+// e.g., "1 cup", "100g", "1 container"
+model FoodServing {
+  id        String      @id @default(uuid())
+  foodId    String
+  food      Food        @relation("FoodServings", fields: [foodId], references: [id], onDelete: Cascade)
+  
+  servingSize   Float
+  servingUnit   ServingUnit
+  servingLabel  String      // Display label like "1 cup (240g)"
+  
+  // Multiplier to convert to base serving
+  // e.g., if base is 100g and this serving is 240g, multiplier = 2.4
+  multiplier    Float       @default(1)
+  
+  createdAt DateTime @default(now())
+
+  @@index([foodId])
+}
+
+// User's food diary/log
+model FoodLog {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation("UserFoodLogs", fields: [userId], references: [id], onDelete: Cascade)
+  recipeId  String?
+  recipe    Recipe?   @relation("RecipeFoodLogs", fields: [recipeId], references: [id], onDelete: SetNull)
+  
+  // Date and meal
+  loggedAt  DateTime  @default(now())  // The date/time of the meal
+  mealType  MealType  @default(BREAKFAST)
+  
+  // Food reference (optional for quick add)
+  foodId    String?
+  food      Food?     @relation("FoodToLogs", fields: [foodId], references: [id], onDelete: SetNull)
+  
+  // Serving info
+  servings      Float       @default(1)     // Number of servings consumed
+  servingSize   Float?                      // Custom serving size (overrides food default)
+  servingUnit   ServingUnit?                // Custom serving unit
+  
+  // Quick add (when no food reference)
+  // Allows logging just calories without selecting a food
+  quickAddName     String?     // e.g., "Birthday cake"
+  quickAddCalories Float?      // Direct calorie entry
+  quickAddProtein  Float?
+  quickAddCarbs    Float?
+  quickAddFat      Float?
+  
+  // Calculated/cached nutrition for this entry
+  // Cached to avoid recalculation and preserve historical accuracy
+  totalCalories   Float       @default(0)
+  totalProtein    Float       @default(0)
+  totalCarbs      Float       @default(0)
+  totalFat        Float       @default(0)
+  
+  // Optional note
+  note          String?     @db.VarChar(255)
+  
+  // GDPR Art. 32 — Encrypted text fields (quickAddName, note)
+  eFoodDetails          Bytes?
+  foodDetailsIv         Bytes?
+  foodDetailsAuthTag    Bytes?
+  foodDetailsWrappedKey Bytes?
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([userId, loggedAt])
+  @@index([loggedAt])
+  @@index([mealType])
+  @@index([foodId])
+  @@index([recipeId])
+}
+
+// User's favorite foods for quick access
+model UserFavoriteFood {
+  id      String @id @default(uuid())
+  userId  String
+  user    User   @relation("UserFavoriteFoods", fields: [userId], references: [id], onDelete: Cascade)
+  
+  foodId  String
+  food    Food   @relation("FoodFavorites", fields: [foodId], references: [id], onDelete: Cascade)
+  
+  // Frequently used serving for this favorite
+  defaultServings   Float?
+  defaultServingUnit ServingUnit?
+  
+  createdAt DateTime @default(now())
+
+  @@unique([userId, foodId])
+  @@index([userId])
+  @@index([foodId])
+}
+
+// Recent foods for quick add (derived from FoodLog but useful for quick lookup)
+// Can be materialized view or managed separately
+
+// User's daily nutrition goals
+model NutritionGoal {
+  id      String @id @default(uuid())
+  userId  String @unique
+  user    User   @relation("UserNutritionGoal", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Daily targets
+  targetCalories    Float   @default(2000)
+  targetProtein     Float   @default(150)   // grams
+  targetCarbs       Float   @default(200)   // grams
+  targetFat         Float   @default(65)    // grams
+  
+  // Optional extended targets
+  targetFiber       Float?  // grams
+  targetSodium      Float?  // mg
+  targetSugar       Float?  // grams
+  
+  // Meal distribution (percentage of daily target per meal)
+  breakfastPercent  Float   @default(25)
+  lunchPercent      Float   @default(35)
+  dinnerPercent     Float   @default(30)
+  snacksPercent     Float   @default(10)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Recipe {
+  id          String   @id @default(uuid())
+  createdById String
+  createdBy   User     @relation("UserCreatedRecipes", fields: [createdById], references: [id], onDelete: Cascade)
+
+  name         String
+  description  String?  @db.VarChar(500)
+  imageUrl     String?  @db.VarChar(255)
+  directions   String[]
+  totalServings Float   @default(1)
+  isPublic     Boolean  @default(false)
+  isVerified   Boolean  @default(false)
+
+  totalCalories Float @default(0)
+  totalProtein  Float @default(0)
+  totalCarbs    Float @default(0)
+  totalFat      Float @default(0)
+
+  perServingCalories Float @default(0)
+  perServingProtein  Float @default(0)
+  perServingCarbs    Float @default(0)
+  perServingFat      Float @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ingredients   RecipeIngredient[]
+  savedBy       UserSavedRecipe[]
+  foodLogs      FoodLog[]         @relation("RecipeFoodLogs")
+  mealPlanItems MealPlanItem[]    @relation("MealPlanRecipes")
+  categories    RecipeCategoryOnRecipe[]
+
+  @@index([createdById])
+  @@index([isPublic])
+  @@index([name])
+  @@index([createdById, isPublic])
+}
+
+// Admin-managed recipe categories (e.g., Gluten Free, Snacks, Appetizers, Entrees)
+model RecipeCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  recipes RecipeCategoryOnRecipe[]
+
+  @@index([sortOrder])
+}
+
+model RecipeCategoryOnRecipe {
+  recipeId         String
+  recipe           Recipe         @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipeCategoryId String
+  recipeCategory   RecipeCategory @relation(fields: [recipeCategoryId], references: [id], onDelete: Cascade)
+  assignedAt       DateTime       @default(now())
+
+  @@id([recipeId, recipeCategoryId])
+  @@index([recipeCategoryId])
+}
+
+model RecipeIngredient {
+  id       String @id @default(uuid())
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  foodId String
+  food   Food   @relation(fields: [foodId], references: [id], onDelete: Restrict)
+
+  quantity  Float
+  note      String? @db.VarChar(255)
+  sortOrder Int     @default(0)
+
+  totalCalories Float @default(0)
+  totalProtein  Float @default(0)
+  totalCarbs    Float @default(0)
+  totalFat      Float @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([recipeId])
+  @@index([foodId])
+  @@index([recipeId, sortOrder])
+}
+
+model UserSavedRecipe {
+  id       String @id @default(uuid())
+  userId   String
+  user     User   @relation("UserSavedRecipes", fields: [userId], references: [id], onDelete: Cascade)
+  recipeId String
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, recipeId])
+  @@index([userId])
+  @@index([recipeId])
+}
+
+// ==================== MEAL PLANNING ====================
+
+model MealPlan {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation("UserMealPlans", fields: [userId], references: [id], onDelete: Cascade)
+
+  name      String   @db.VarChar(120)
+  isActive  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items     MealPlanItem[]
+  groceryLists GroceryList[]   @relation("MealPlanGroceryLists")
+
+  @@index([userId])
+  @@index([userId, isActive])
+}
+
+model MealPlanItem {
+  id         String   @id @default(uuid())
+  mealPlanId String
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+
+  dayOfWeek  Int      // 0=Sunday, 1=Monday, ..., 6=Saturday
+  mealType   MealType
+  sortOrder  Int      @default(0)
+
+  // Food or recipe reference
+  foodId     String?
+  food       Food?    @relation("MealPlanFoods", fields: [foodId], references: [id], onDelete: SetNull)
+  recipeId   String?
+  recipe     Recipe?  @relation("MealPlanRecipes", fields: [recipeId], references: [id], onDelete: SetNull)
+
+  // Serving info
+  servings   Float    @default(1)
+
+  // Quick-add alternative
+  customName     String? @db.VarChar(100)
+  customCalories Float?
+  customProtein  Float?
+  customCarbs    Float?
+  customFat      Float?
+
+  // Cached nutrition (food/recipe * servings)
+  totalCalories Float @default(0)
+  totalProtein  Float @default(0)
+  totalCarbs    Float @default(0)
+  totalFat      Float @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mealPlanId])
+  @@index([mealPlanId, dayOfWeek])
+  @@index([foodId])
+  @@index([recipeId])
+}
+
+// ==================== GROCERY LISTS ====================
+
+enum GroceryListStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+model GroceryList {
+  id          String             @id @default(uuid())
+  userId      String
+  user        User               @relation("UserGroceryLists", fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String             @db.VarChar(120)
+  status      GroceryListStatus  @default(ACTIVE)
+
+  // Optional meal plan this was seeded from
+  mealPlanId  String?
+  mealPlan    MealPlan?          @relation("MealPlanGroceryLists", fields: [mealPlanId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  items       GroceryListItem[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([mealPlanId])
+}
+
+model GroceryListItem {
+  id             String            @id @default(uuid())
+  groceryListId  String
+  groceryList    GroceryList       @relation(fields: [groceryListId], references: [id], onDelete: Cascade)
+
+  name           String            @db.VarChar(200)
+  quantity       Float?
+  unit           String?           @db.VarChar(50)
+  category       String            @default("General") @db.VarChar(60)
+  isChecked      Boolean           @default(false)
+  sortOrder      Int               @default(0)
+  note           String?           @db.VarChar(255)
+
+  // Optional food reference
+  foodId         String?
+  food           Food?             @relation("GroceryListFoods", fields: [foodId], references: [id], onDelete: SetNull)
+
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([groceryListId])
+  @@index([groceryListId, isChecked])
+  @@index([foodId])
+}

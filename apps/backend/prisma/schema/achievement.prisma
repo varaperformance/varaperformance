@@ -1,0 +1,49 @@
+// Achievement / Badge System — milestone-based gamification
+
+enum AchievementCategory {
+  WORKOUT
+  NUTRITION
+  STREAK
+  SOCIAL
+  COACHING
+  COMMERCE
+}
+
+model Achievement {
+  id String @id @default(uuid())
+
+  slug        String              @unique // "first-pr", "100-workouts", "30-day-streak"
+  name        String              @db.VarChar(100) // "First PR"
+  description String              @db.VarChar(255) // "Hit your first personal record"
+  icon        String              @db.VarChar(50) // lucide icon name
+  category    AchievementCategory
+
+  // Threshold for automatic unlocking (null = manually awarded)
+  threshold Int? // e.g. 100 for "100 workouts"
+
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userAchievements UserAchievement[]
+  elevatePosts     ElevatePost[]     @relation("AchievementElevatePosts")
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model UserAchievement {
+  id            String @id @default(uuid())
+  userId        String
+  user          User        @relation("UserAchievements", fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  unlockedAt DateTime @default(now())
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@index([achievementId])
+}

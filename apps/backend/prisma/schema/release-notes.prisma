@@ -1,0 +1,32 @@
+// Release Notes Models
+
+enum ReleaseType {
+  MAJOR
+  MINOR
+  PATCH
+}
+
+enum ReleaseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model ReleaseNote {
+  id          String        @id @default(uuid())
+  version     String        @unique
+  title       String?
+  type        ReleaseType   @default(MINOR)
+  status      ReleaseStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  highlights   String[] @default([])
+  features     String[] @default([])
+  improvements String[] @default([])
+  fixes        String[] @default([])
+
+  @@index([status, publishedAt])
+  @@index([version])
+}

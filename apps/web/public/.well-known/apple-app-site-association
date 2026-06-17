@@ -1,0 +1,20 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["TEAM_ID.com.varaperformance.app"],
+        "paths": [
+          "/verify-email/*",
+          "/reset-password/*",
+          "/blog/*",
+          "/profile/*",
+          "/elevate/*",
+          "/shop/product/*",
+          "/coaching/*",
+          "/integrations/strava/callback*"
+        ]
+      }
+    ]
+  }
+}

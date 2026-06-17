@@ -1,0 +1,83 @@
+<html>
+  <head>
+    <meta charset='utf-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <title>Important: Data Security Notice</title>
+    <style>
+      body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; color: #18181b; }
+      .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; }
+      .header { background: linear-gradient(135deg, #7c3aed, #6d28d9); padding: 32px 24px; text-align: center; }
+      .header h1 { color: #ffffff; font-size: 22px; margin: 0 0 4px; font-weight: 700; }
+      .header p { color: rgba(255,255,255,0.85); font-size: 14px; margin: 0; }
+      .body { padding: 32px 24px; }
+      .notice-box { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+      .notice-box p { margin: 0; font-size: 14px; color: #92400e; }
+      h2 { font-size: 16px; font-weight: 600; color: #18181b; margin: 24px 0 8px; }
+      p { font-size: 14px; line-height: 1.6; color: #3f3f46; margin: 0 0 12px; }
+      ul { font-size: 14px; line-height: 1.8; color: #3f3f46; padding-left: 20px; margin: 0 0 16px; }
+      .cta { text-align: center; margin: 32px 0; }
+      .btn { display: inline-block; background: #7c3aed; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; }
+      .footer { background: #f4f4f5; padding: 20px 24px; text-align: center; font-size: 12px; color: #71717a; }
+    </style>
+  </head>
+  <body>
+    <div style='padding: 24px;'>
+      <div class='container'>
+        <div class='header'>
+          <h1>Important: Security Notice</h1>
+          <p>Vara Performance — Data Security Update</p>
+        </div>
+        <div class='body'>
+          <div class='notice-box'>
+            <p>We are writing to inform you of a security incident that may have affected your account.</p>
+          </div>
+
+          <h2>What Happened</h2>
+          <p>
+            On {{detectedAtFormatted}}, we identified a security incident involving our systems.
+            We took immediate steps to contain the incident and secure your data.
+          </p>
+
+          <h2>Information Involved</h2>
+          <p>The following categories of data may have been affected:</p>
+          <ul>
+            {{#each dataCategories}}
+              <li>{{this}}</li>
+            {{/each}}
+          </ul>
+
+          <h2>What We Are Doing</h2>
+          <ul>
+            <li>We have contained the incident and secured the affected systems.</li>
+            <li>We have notified the relevant supervisory authority as required by law.</li>
+            <li>We are conducting a full investigation to understand what happened.</li>
+            <li>We are implementing additional security measures to prevent recurrence.</li>
+          </ul>
+
+          <h2>What You Can Do</h2>
+          <ul>
+            <li>Change your Vara Performance password as a precaution.</li>
+            <li>Enable two-factor authentication if you have not already.</li>
+            <li>Review your account activity for anything unusual.</li>
+            <li>Be cautious of unsolicited emails or messages requesting your credentials.</li>
+          </ul>
+
+          <div class='cta'>
+            <a href='{{frontendUrl}}/settings/security' class='btn'>Review Account Security</a>
+          </div>
+
+          <h2>Questions or Concerns</h2>
+          <p>
+            If you have any questions about this notice or our response, please contact us at
+            <a href='mailto:privacy@varaperformance.com'>privacy@varaperformance.com</a>.
+            We take the security of your data very seriously and apologise for any inconvenience this may cause.
+          </p>
+        </div>
+        <div class='footer'>
+          <p>&copy; {{year}} Vara Performance. All rights reserved.</p>
+          <p>You are receiving this email because you have an account with Vara Performance.</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

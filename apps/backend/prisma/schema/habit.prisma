@@ -1,0 +1,52 @@
+// Habit / Streak Tracking — daily habit check-ins with streak counters
+
+enum HabitLinkedModule {
+  STACK
+  CLIMB
+  INJECTION
+}
+
+model Habit {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserHabits", fields: [userId], references: [id], onDelete: Cascade)
+
+  name  String @db.VarChar(100)
+  icon  String @default("circle-check") @db.VarChar(50) // lucide icon name
+  color String @default("#6366f1") @db.VarChar(7) // hex color
+
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  // Optional link to auto-complete from stack/climb/injection activity
+  linkedModule HabitLinkedModule?
+
+  // Streak tracking (denormalized for performance)
+  currentStreak Int @default(0)
+  longestStreak Int @default(0)
+  lastCompletedDate DateTime? @db.Date
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logs HabitLog[]
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@index([userId, linkedModule])
+}
+
+model HabitLog {
+  id      String @id @default(uuid())
+  habitId String
+  habit   Habit  @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  date      DateTime @db.Date
+  completed Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@unique([habitId, date])
+  @@index([habitId])
+  @@index([habitId, date])
+}

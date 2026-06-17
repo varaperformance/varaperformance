@@ -1,0 +1,59 @@
+// Team & Ambassador Models
+
+enum TeamMemberRole {
+  CORE       // Dedicated Vara team member
+  AMBASSADOR // Approved ambassador / influencer
+}
+
+enum AmbassadorApplicationStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+model TeamMember {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation("UserTeamMember", fields: [userId], references: [id], onDelete: Cascade)
+
+  role     TeamMemberRole
+  title    String           // "Founder & CEO", "Community Manager", etc.
+  bio      String?          @db.Text
+  photoUrl String?
+
+  // Display order (lower = first)
+  sortOrder Int @default(0)
+
+  // Visibility
+  isVisible Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role, isVisible])
+  @@index([sortOrder])
+}
+
+model AmbassadorApplication {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserAmbassadorApplications", fields: [userId], references: [id], onDelete: Cascade)
+
+  status AmbassadorApplicationStatus @default(PENDING)
+
+  // Application questions
+  reason       String @db.Text // Why do you want to become an ambassador?
+  contribution String @db.Text // How would you benefit Vara?
+  audience     String @db.Text // Describe your audience / reach
+
+  // Admin fields
+  reviewedBy String?
+  reviewedAt DateTime?
+  denyReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([userId])
+}

@@ -1,0 +1,15 @@
+node_modules
+apps/*/node_modules
+packages/*/node_modules
+.pnpm
+.pnpm/*
+.pnpm-workspace-state-v1.json
+*.log
+dist
+build
+stats.html
+coverage
+.env
+.git
+.gitignore
+Dockerfile

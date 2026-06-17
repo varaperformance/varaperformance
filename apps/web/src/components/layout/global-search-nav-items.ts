@@ -1,0 +1,351 @@
+/**
+ * Static navigation index for Phase 0 global search (no server calls).
+ * Paths must match `ProtectedAppRoutes` / admin routes in `routes/route-sections.tsx`.
+ */
+export type NavSearchItem = {
+  id: string;
+  title: string;
+  path: string;
+  /** Extra tokens matched against the query (lowercased). */
+  keywords?: string[];
+  /** If set, item is hidden unless the user has this permission (or all of them). */
+  permission?: string | string[];
+  group: string;
+};
+
+export const GLOBAL_SEARCH_NAV_ITEMS: NavSearchItem[] = [
+  // Main
+  {
+    id: 'dashboard',
+    title: 'Dashboard',
+    path: '/dashboard',
+    keywords: ['home', 'overview'],
+    group: 'Main',
+  },
+  {
+    id: 'integrations',
+    title: 'Integrations',
+    path: '/integrations',
+    keywords: [
+      'strava',
+      'withings',
+      'healthkit',
+      'apple health',
+      'google fit',
+      'sync',
+      'wearable',
+    ],
+    group: 'Main',
+  },
+  {
+    id: 'my-coaching',
+    title: 'My Coaching',
+    path: '/my-coaching',
+    keywords: ['coach', 'coaching'],
+    group: 'Main',
+  },
+  {
+    id: 'messages',
+    title: 'Messages',
+    path: '/messages',
+    keywords: ['chat', 'dm', 'inbox'],
+    permission: 'messaging:read',
+    group: 'Main',
+  },
+  {
+    id: 'calendar',
+    title: 'Calendar',
+    path: '/calendar',
+    keywords: ['schedule', 'events'],
+    permission: 'calendar:read',
+    group: 'Main',
+  },
+  {
+    id: 'shop-orders',
+    title: 'Shop orders',
+    path: '/shop/orders',
+    keywords: ['purchases', 'order history'],
+    group: 'Main',
+  },
+  {
+    id: 'notifications',
+    title: 'Notifications',
+    path: '/notifications',
+    keywords: ['alerts'],
+    group: 'Main',
+  },
+  {
+    id: 'elevate',
+    title: 'Elevate',
+    path: '/elevate',
+    keywords: ['feed', 'social'],
+    group: 'Main',
+  },
+  {
+    id: 'elevate-studio',
+    title: 'Studio',
+    path: '/elevate/studio',
+    keywords: ['profile', 'settings', 'partners', 'elevate studio'],
+    group: 'Main',
+  },
+  {
+    id: 'notes',
+    title: 'Notes',
+    path: '/notes',
+    keywords: ['journal'],
+    group: 'Main',
+  },
+  {
+    id: 'stack',
+    title: 'Stack',
+    path: '/stack',
+    keywords: ['supplements'],
+    group: 'Main',
+  },
+  {
+    id: 'climb',
+    title: 'Climb',
+    path: '/climb',
+    keywords: ['leaderboard'],
+    group: 'Main',
+  },
+  // Health
+  {
+    id: 'goals',
+    title: 'Goals',
+    path: '/goals',
+    keywords: ['targets'],
+    group: 'Health',
+  },
+  {
+    id: 'goal-wizard',
+    title: 'Goal wizard',
+    path: '/health/goals/wizard',
+    keywords: ['onboarding', 'new goal'],
+    group: 'Health',
+  },
+  {
+    id: 'habits',
+    title: 'Habits',
+    path: '/habits',
+    keywords: ['routine'],
+    group: 'Health',
+  },
+  {
+    id: 'weekly-report',
+    title: 'Weekly report',
+    path: '/weekly-report',
+    keywords: ['summary', 'progress'],
+    group: 'Health',
+  },
+  {
+    id: 'food-diary',
+    title: 'Food diary',
+    path: '/food-diary',
+    keywords: ['nutrition', 'log food', 'macros', 'calories'],
+    group: 'Health',
+  },
+  {
+    id: 'recipes',
+    title: 'Recipes',
+    path: '/recipes',
+    keywords: ['cooking', 'meals'],
+    group: 'Health',
+  },
+  {
+    id: 'recipes-wizard',
+    title: 'Recipe wizard',
+    path: '/recipes/wizard',
+    keywords: ['new recipe'],
+    group: 'Health',
+  },
+  {
+    id: 'meal-plans',
+    title: 'Meal plans',
+    path: '/meal-plans',
+    keywords: ['planning'],
+    group: 'Health',
+  },
+  {
+    id: 'grocery-lists',
+    title: 'Grocery lists',
+    path: '/grocery-lists',
+    keywords: ['shopping'],
+    group: 'Health',
+  },
+  {
+    id: 'water',
+    title: 'Water intake',
+    path: '/water',
+    keywords: ['hydration', 'hydrate'],
+    group: 'Health',
+  },
+  {
+    id: 'steps',
+    title: 'Step tracking',
+    path: '/steps',
+    keywords: ['walking', 'pedometer', 'activity'],
+    group: 'Health',
+  },
+  {
+    id: 'sleep',
+    title: 'Sleep tracking',
+    path: '/sleep',
+    keywords: ['rest'],
+    group: 'Health',
+  },
+  {
+    id: 'heart-rate',
+    title: 'Heart rate',
+    path: '/heart-rate',
+    keywords: ['hr', 'cardio', 'bpm'],
+    group: 'Health',
+  },
+  {
+    id: 'weight',
+    title: 'Weight tracking',
+    path: '/weight',
+    keywords: ['scale', 'body weight'],
+    group: 'Health',
+  },
+  {
+    id: 'measurements',
+    title: 'Measurements',
+    path: '/measurements',
+    keywords: ['body', 'tape'],
+    group: 'Health',
+  },
+  {
+    id: 'injections',
+    title: 'Injection tracker',
+    path: '/injections',
+    keywords: ['shots', 'trt', 'peptide'],
+    group: 'Health',
+  },
+  // Training
+  {
+    id: 'workouts',
+    title: 'Workout log',
+    path: '/workouts',
+    keywords: ['sessions', 'training', 'gym'],
+    group: 'Training',
+  },
+  {
+    id: 'workout-plans',
+    title: 'Workout plans',
+    path: '/workout-plans',
+    keywords: ['programs'],
+    group: 'Training',
+  },
+  {
+    id: 'personal-records',
+    title: 'Personal records',
+    path: '/personal-records',
+    keywords: ['prs', 'pr', 'records'],
+    group: 'Training',
+  },
+  {
+    id: 'exercises',
+    title: 'Exercises',
+    path: '/exercises',
+    keywords: ['movements', 'library'],
+    group: 'Training',
+  },
+  {
+    id: 'achievements',
+    title: 'Achievements',
+    path: '/achievements',
+    keywords: ['badges', 'milestones'],
+    group: 'Training',
+  },
+  {
+    id: 'challenges',
+    title: 'Challenges',
+    path: '/challenges',
+    keywords: ['competition'],
+    group: 'Training',
+  },
+  // Coaching (registered coach)
+  {
+    id: 'coach-dashboard',
+    title: 'Coach dashboard',
+    path: '/coaches/dashboard',
+    keywords: ['coaches'],
+    permission: 'coaching:read',
+    group: 'Coaching',
+  },
+  {
+    id: 'coach-clients',
+    title: 'Coach clients',
+    path: '/coaches/clients',
+    keywords: ['athletes'],
+    permission: 'coaching:read',
+    group: 'Coaching',
+  },
+  {
+    id: 'coach-contracts',
+    title: 'Coach contracts',
+    path: '/coaches/contracts',
+    permission: 'coaching:read',
+    group: 'Coaching',
+  },
+  {
+    id: 'coach-packages',
+    title: 'Coach packages',
+    path: '/coaches/packages',
+    permission: ['coaching:read', 'coaching:update'],
+    group: 'Coaching',
+  },
+  {
+    id: 'coach-workout-plans',
+    title: 'Coach workout plans',
+    path: '/coaches/workout-plans',
+    permission: 'coaching:read',
+    group: 'Coaching',
+  },
+  {
+    id: 'coach-availability',
+    title: 'Coach availability',
+    path: '/coaches/availability',
+    permission: 'coaching:read',
+    group: 'Coaching',
+  },
+  {
+    id: 'coach-subscription',
+    title: 'Coach subscription',
+    path: '/coaches/subscription',
+    permission: 'coaching:read',
+    group: 'Coaching',
+  },
+  // Tools
+  {
+    id: 'calculators',
+    title: 'Calculators',
+    path: '/calculators',
+    keywords: ['bmi', 'tdee', 'bmr', 'macro', 'one rep max', 'tools'],
+    group: 'Tools',
+  },
+  // Admin (subset — full list lives under /admin/*)
+  {
+    id: 'admin',
+    title: 'Admin home',
+    path: '/admin',
+    keywords: ['admin dashboard'],
+    permission: 'user:read',
+    group: 'Admin',
+  },
+  {
+    id: 'admin-users',
+    title: 'Admin users',
+    path: '/admin/users',
+    permission: 'user:read',
+    group: 'Admin',
+  },
+  {
+    id: 'admin-audit',
+    title: 'Admin audit logs',
+    path: '/admin/audit-logs',
+    permission: 'admin:read',
+    group: 'Admin',
+  },
+];

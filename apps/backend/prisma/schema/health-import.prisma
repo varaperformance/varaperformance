@@ -1,0 +1,15 @@
+model HealthDataImport {
+  id            String   @id @default(uuid())
+  userId        String
+  provider      String
+  trigger       String
+  importedCount Int      @default(0)
+  skippedCount  Int      @default(0)
+  failedCount   Int      @default(0)
+  durationMs    Int?
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+
+  @@index([userId, provider])
+  @@index([createdAt])
+}

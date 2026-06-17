@@ -1,0 +1,70 @@
+enum ThemePreference {
+  light
+  dark
+  system
+}
+
+model Profile {
+  id          String  @id @default(uuid())
+  userId      String  @unique
+  user        User    @relation("UserProfile", fields: [userId], references: [id], onDelete: Cascade)
+  displayName String? @unique
+  isProfilePublic Boolean @default(true)
+  bio         String? @db.VarChar(255)
+  avatarUrl   String? @db.VarChar(255)
+  coverUrl    String? @db.VarChar(255) // Profile cover/banner image
+  allowedAI   Boolean @default(false)
+  timezone    String? @db.VarChar(50) // IANA timezone (e.g., 'America/New_York')
+  theme       ThemePreference? // UI theme preference
+
+  // Optional sensitive notes encrypted
+  eProfile          Bytes? // JSON String with encrypted fields (e.g., dateOfBirth, firstName, lastName)
+  profileIv         Bytes?
+  profileAuthTag    Bytes?
+  profileWrappedKey Bytes?
+
+  completedAt DateTime? // null until profile wizard is finished
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Compliance: Soft Delete (matches User lifecycle)
+  deletedAt DateTime?
+
+  // Relations
+  socials Socials? @relation("ProfileSocials")
+  gyms    Gym[]    @relation("ProfileGyms")
+
+  @@index([deletedAt])
+}
+
+model ProfileAddress {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eAddress      Bytes
+  addressIv     Bytes
+  addressAuthTag Bytes
+  addressWrappedKey Bytes
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, isDefault])
+}
+
+model Socials {
+  id        String  @id @default(uuid())
+  profileId String  @unique
+  profile   Profile @relation("ProfileSocials", fields: [profileId], references: [id], onDelete: Cascade)
+
+  twitter   String?
+  facebook  String?
+  instagram String?
+  threads   String?
+  linkedin  String?
+  github    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

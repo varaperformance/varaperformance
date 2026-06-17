@@ -1,0 +1,22 @@
+// Coach Availability — recurring weekly time slots for booking
+// Uses DayOfWeek enum from workout-plans.prisma
+
+model CoachAvailability {
+  id      String @id @default(uuid())
+  coachId String
+  coach   Coach  @relation("CoachAvailabilitySlots", fields: [coachId], references: [id], onDelete: Cascade)
+
+  dayOfWeek DayOfWeek
+  startTime String @db.VarChar(5) // "09:00" (HH:mm, 24h format)
+  endTime   String @db.VarChar(5) // "17:00"
+  timezone  String @default("America/Chicago") @db.VarChar(50)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([coachId, dayOfWeek, startTime])
+  @@index([coachId])
+  @@index([coachId, isActive])
+}

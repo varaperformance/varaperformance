@@ -1,0 +1,102 @@
+// Health Data Tracking Models
+// Stores data synced from Apple HealthKit / Google Health Connect
+// Steps and heart rate are non-PHI. Sleep is borderline but stored in plain.
+// Weight data is PHI and handled separately in weight.prisma (encrypted).
+
+model StepLog {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserStepLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  date   DateTime             @db.Date
+  steps  Int
+  source WorkoutSessionSource @default(MANUAL)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date, source])
+  @@index([userId, date])
+  @@map("step_logs")
+}
+
+model SleepLog {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserSleepLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  date      DateTime             @db.Date
+  startTime DateTime
+  endTime   DateTime
+  duration  Float                // hours
+  source    WorkoutSessionSource @default(MANUAL)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date, source])
+  @@index([userId, date])
+  @@map("sleep_logs")
+}
+
+model HeartRateLog {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserHeartRateLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  timestamp DateTime
+  bpm       Int
+  source    WorkoutSessionSource @default(MANUAL)
+
+  createdAt DateTime @default(now())
+
+  // One row per user per instant per source so createMany(skipDuplicates) and
+  // overlapping health syncs do not multiply rows for the same UTC minute bucket.
+  @@unique([userId, timestamp, source])
+  @@map("heart_rate_logs")
+}
+
+// Tracks the last successful sync timestamp per user per data type per source
+model HealthSyncLog {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation("UserHealthSyncLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  dataType String               // 'steps' | 'sleep' | 'heartRate' | 'weight' | 'workouts'
+  source   WorkoutSessionSource
+
+  lastSyncedAt DateTime
+  syncCount    Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, dataType, source])
+  @@index([userId])
+  @@map("health_sync_logs")
+}
+
+// Per-user sync preferences: which metrics to read/write from device health store
+model HealthSyncPreference {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation("UserHealthSyncPreference", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Read from device health store → Vara backend
+  readSteps      Boolean @default(true)
+  readSleep      Boolean @default(true)
+  readHeartRate  Boolean @default(true)
+  readWeight     Boolean @default(true)
+  readWater      Boolean @default(true)
+  readWorkouts   Boolean @default(true)
+
+  // Write from Vara → device health store
+  writeWeight    Boolean @default(false)
+  writeWater     Boolean @default(false)
+  writeWorkouts  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("health_sync_preferences")
+}
