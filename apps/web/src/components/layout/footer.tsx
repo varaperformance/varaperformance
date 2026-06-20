@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Github } from 'lucide-react';
 import logo from '@/assets/images/logo.png';
 
 interface FooterSectionProps {
@@ -57,6 +57,15 @@ const Footer = () => {
             </p>
             {/* Social Links */}
             <div className="flex items-center gap-3">
+              <a
+                href="https://github.com/varaperformance"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="GitHub Vara Performance"
+              >
+                <Github className="h-4 w-4" />
+              </a>
               <a
                 href="https://instagram.com/varaperformance"
                 target="_blank"
