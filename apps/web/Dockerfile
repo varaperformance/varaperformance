@@ -1,17 +1,19 @@
-FROM node:22.22.2-alpine AS build
+# Bun end to end: bun install and vite build on the Bun dev image, served by a
+# small Bun static server (server.ts, replacing nginx) on distroless Bun.
+ARG BUN_DEV_IMAGE=ghcr.io/worlddrknss/debian-fipsbase-bun:1.4.2-pqc-dev
+ARG BUN_IMAGE=ghcr.io/worlddrknss/debian-fipsbase-bun:1.4.2-pqc
+
+FROM ${BUN_DEV_IMAGE} AS build
 WORKDIR /app
 
-RUN apk add --no-cache autoconf automake libtool gcc g++ make zlib-dev nasm
-
-RUN npm install -g pnpm@11
-
-COPY pnpm-workspace.yaml ./pnpm-workspace.yaml
-COPY pnpm-lock.yaml ./pnpm-lock.yaml
-COPY package.json ./package.json
+# Workspace manifests and the lockfile first, so the install caches until they change.
+COPY package.json bun.lock bunfig.toml ./
+COPY apps/backend/package.json ./apps/backend/package.json
 COPY apps/web/package.json ./apps/web/package.json
+COPY apps/worker/package.json ./apps/worker/package.json
 COPY packages/core/package.json ./packages/core/package.json
 
-RUN pnpm install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 COPY . .
 
@@ -41,15 +43,21 @@ ENV VITE_APPLE_REDIRECT_URI=${VITE_APPLE_REDIRECT_URI}
 ENV VITE_APPLE_SCOPE=${VITE_APPLE_SCOPE}
 ENV VITE_MAPBOX_ACCESS_TOKEN=${VITE_MAPBOX_ACCESS_TOKEN}
 
-RUN pnpm --filter @varaperformance/core build
-RUN pnpm --filter @varaperformance/web build
+RUN bun --bun run --filter @varaperformance/core build
+RUN bun --bun run build
 
-FROM nginxinc/nginx-unprivileged:1.27.5-alpine AS runner
+FROM ${BUN_IMAGE} AS runner
+WORKDIR /srv
 
-COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+COPY apps/web/server.ts ./server.ts
+COPY --from=build /app/apps/web/dist ./dist
+
+# The pod runs as 101 (formerly nginx-unprivileged's user); files stay root-owned and read-only.
+USER 101:101
 
 EXPOSE 4173
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:4173/ || exit 1
+  CMD ["bun", "-e", "const r = await fetch('http://localhost:4173/').catch(() => null); process.exit(r?.ok ? 0 : 1)"]
+
+CMD ["bun", "server.ts"]

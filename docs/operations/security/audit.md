@@ -69,7 +69,7 @@ Audit date: April 9, 2026.
 ### 10. No Multi-Stage Docker Builds
 
 - [x] Refactor `apps/backend/Dockerfile` to multi-stage (build + production)
-- [x] Refactor `apps/web/Dockerfile` to multi-stage (build + nginx/static)
+- [x] Refactor `apps/web/Dockerfile` to multi-stage (build + Bun static server)
 - [x] Refactor `apps/worker/Dockerfile` to multi-stage (build + production)
 - [x] Exclude devDependencies from production images
 

@@ -156,7 +156,7 @@ Each line item below uses **priority** (P0–P3) and **effort** (S/M/L).
 
 - [x] **P2 / S** — Add `vite-plugin-compression` or equivalent for pre-compressed assets
   - Implemented: `gzip` and `brotliCompress` in `apps/web/vite.config.ts` (emits `*.js.gz` / `*.js.br` next to build output)
-  - The web production image’s `apps/web/nginx.conf` uses `gzip on` and **`gzip_static on`** so the pod serves pre-compressed **gzip** from disk. The default image has no Brotli module; `.br` files are still in `dist` for a future Brotli-capable static layer or custom image
+  - The web production image serves `dist` with `apps/web/server.ts` (Bun), which picks the pre-compressed **`.br`** or **`.gz`** file from disk based on `Accept-Encoding` (Brotli preferred) and sends `Vary: Accept-Encoding`
   - If the app is only a Node process using middleware compression for static files, build-time files are **optional** (runtime gzip is already doing the job; pre-compressed still helps if you teach the static handler to prefer them)
 
 - [x] **P3 / S** — Add bundle analysis to CI

@@ -1,0 +1,14 @@
+# Build context for apps/*/Dockerfile (context is the repo root).
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+.git
+hack
+docs
+apps/web/android
+apps/web/ios
+apps/web/stats.html
+apps/backend/uploads
+coverage

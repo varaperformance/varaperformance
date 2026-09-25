@@ -1,0 +1,3 @@
+[install]
+# One hoisted node_modules, as pnpm's shamefully-hoist=true gave.
+linker = "hoisted"

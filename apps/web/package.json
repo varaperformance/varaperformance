@@ -23,7 +23,7 @@
     "cap:add:android": "cap add android",
     "cap:open:ios": "cap open ios",
     "cap:open:android": "cap open android",
-    "cap:assets": "node --input-type=module -e \"import fs from 'node:fs'; fs.mkdirSync('assets',{recursive:true}); fs.copyFileSync('src/assets/images/logo.png','assets/logo.png')\" && pnpm exec capacitor-assets generate --iconBackgroundColor '#0B1020' --iconBackgroundColorDark '#0B1020' --splashBackgroundColor '#0B1020' --splashBackgroundColorDark '#0B1020' --logoSplashScale 0.22 --ios --android",
+    "cap:assets": "node --input-type=module -e \"import fs from 'node:fs'; fs.mkdirSync('assets',{recursive:true}); fs.copyFileSync('src/assets/images/logo.png','assets/logo.png')\" && bunx capacitor-assets generate --iconBackgroundColor '#0B1020' --iconBackgroundColorDark '#0B1020' --splashBackgroundColor '#0B1020' --splashBackgroundColorDark '#0B1020' --logoSplashScale 0.22 --ios --android",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "lint": "eslint .",
     "test": "vitest run",
