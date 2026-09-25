@@ -33,8 +33,11 @@ jobs:
         with:
           bun-version-file: .bun-version
 
+      # No lifecycle scripts: the image-optimizer binaries (jpegtran-bin & co.)
+      # are only for the web build in Docker, and their installers fail here.
+      # Prisma clients are generated below.
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Build core
         run: bun run --filter @varaperformance/core build

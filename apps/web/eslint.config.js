@@ -7,7 +7,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import path from "path";
 
 export default defineConfig([
-  globalIgnores(["dist", "vite.config.ts", "vitest.config.ts"]),
+  globalIgnores(["dist", "vite.config.ts", "vitest.config.ts", "server.ts"]),
   {
     files: ["**/*.{ts,tsx}"],
     extends: [
