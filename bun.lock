@@ -280,7 +280,6 @@
     "argon2",
     "@capacitor/background-runner",
     "unrs-resolver",
-    "jpegtran-bin",
     "mozjpeg",
     "optipng-bin",
     "esbuild",
