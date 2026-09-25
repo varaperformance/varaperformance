@@ -40,12 +40,7 @@
     "@prisma/engines",
     "@scarf/scarf",
     "argon2",
-    "cwebp-bin",
     "esbuild",
-    "gifsicle",
-    "mozjpeg",
-    "optipng-bin",
-    "pngquant-bin",
     "prisma",
     "sharp",
     "unrs-resolver"

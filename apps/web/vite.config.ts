@@ -4,7 +4,7 @@ import react from "@vitejs/plugin-react";
 import { visualizer } from "rollup-plugin-visualizer";
 import { defineConfig, loadEnv, type PluginOption } from "vite";
 import viteCompression from "vite-plugin-compression";
-import viteImagemin from "vite-plugin-imagemin";
+import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 import { VitePWA } from "vite-plugin-pwa";
 
 // https://vite.dev/config/
@@ -42,22 +42,17 @@ export default defineConfig(({ mode }) => {
     viteCompression({ algorithm: "brotliCompress" })
   );
 
-  // Image optimization - convert to WebP and compress
+  // Image optimization with sharp and svgo (no downloaded binaries)
   plugins.push(
-    viteImagemin({
-      gifsicle: { optimizationLevel: 7 },
-      optipng: { optimizationLevel: 7 },
-      mozjpeg: { quality: 80 },
-      pngquant: { quality: [0.8, 0.9] },
-      svgo: {
+    ViteImageOptimizer({
+      png: { quality: 90 },
+      jpeg: { quality: 80 },
+      jpg: { quality: 80 },
+      svg: {
         plugins: [
           {
-            name: "removeViewBox",
-            active: false,
-          },
-          {
-            name: "removeEmptyAttrs",
-            active: false,
+            name: "preset-default",
+            params: { overrides: { removeViewBox: false, removeEmptyAttrs: false } },
           },
         ],
       },
