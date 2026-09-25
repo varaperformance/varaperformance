@@ -1,7 +1,7 @@
 {
   "name": "@varaperformance/backend",
   "version": "1.0.0",
-  "description": "Vara Performance API backend — NestJS with Prisma and compliance-grade security",
+  "description": "Vara Performance API backend \u2014 NestJS with Prisma and compliance-grade security",
   "author": "worlddrknss",
   "private": true,
   "license": "AGPL-3.0-only",
@@ -24,7 +24,7 @@
     "dev": "nest start --watch",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "bun dist/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "pretest": "prisma generate",
     "test": "jest",
@@ -116,7 +116,8 @@
     "tsconfig-paths": "^4.2.0",
     "tsconfig-paths-webpack-plugin": "^4.2.0",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript-eslint": "^8.20.0",
+    "webpack-node-externals": "^3.0.0"
   },
   "jest": {
     "moduleFileExtensions": [

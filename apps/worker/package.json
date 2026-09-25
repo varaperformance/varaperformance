@@ -12,11 +12,11 @@
   },
   "scripts": {
     "prisma:generate": "prisma generate && mkdir -p src/generated && (test -L src/generated/prisma || ln -s ../../../backend/src/generated/prisma src/generated/prisma)",
-    "build": "pnpm run prisma:generate && nest build",
+    "build": "bun run prisma:generate && nest build",
     "format": "prettier --write \"src/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "start:prod": "node dist/src/main",
+    "start:prod": "bun dist/src/main.js",
     "lint": "eslint \"src/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch"

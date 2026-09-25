@@ -1,5 +1,6 @@
 const path = require('path');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
+const nodeExternals = require('webpack-node-externals');
 
 module.exports = function (options) {
   // Use transpileOnly to avoid ts-loader type-check failures caused by Prisma 7's
@@ -29,6 +30,11 @@ module.exports = function (options) {
     module: { ...options.module, rules },
     externals: [
       ...(options.externals || []),
+      // Nest's default externals only read apps/backend/node_modules; Bun hoists
+      // the dependencies to the workspace root, so leave those unbundled too.
+      nodeExternals({
+        modulesDir: path.resolve(__dirname, '../../node_modules'),
+      }),
       // Exclude native node modules from bundling
       function ({ request }, callback) {
         if (/\.node$/.test(request) || /@css-inline/.test(request)) {

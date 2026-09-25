@@ -28,37 +28,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          version: 11
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "pnpm"
+          bun-version-file: .bun-version
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Build core
-        run: pnpm --filter @varaperformance/core build
+        run: bun run --filter @varaperformance/core build
 
       - name: ${{ matrix.service }} - Format
         if: matrix.service != 'core'
-        run: pnpm --filter @varaperformance/${{ matrix.service }} format
+        run: bun run --filter @varaperformance/${{ matrix.service }} format
 
       - name: ${{ matrix.service }} - Lint
         if: matrix.service != 'core'
-        run: pnpm --filter @varaperformance/${{ matrix.service }} lint
+        run: bun run --filter @varaperformance/${{ matrix.service }} lint
 
       - name: ${{ matrix.service }} - Generate Prisma
         if: matrix.service == 'backend' || matrix.service == 'worker'
-        run: pnpm --filter @varaperformance/${{ matrix.service }} prisma:generate
+        run: bun run --filter @varaperformance/${{ matrix.service }} prisma:generate
 
       - name: ${{ matrix.service }} - Test
-        run: pnpm --filter @varaperformance/${{ matrix.service }} test
+        run: bun run --filter @varaperformance/${{ matrix.service }} test
 
       # Build step removed — Docker build owns compilation via GHA layer cache.
       # build:analyze for web bundle report can be re-added as a separate scheduled job.
